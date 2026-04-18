@@ -4068,45 +4068,47 @@ canvas.addEventListener('contextmenu', e => e.preventDefault());
       if (len > MCR) { dx = dx/len*MCR; dy = dy/len*MCR; }
       joyR.dx = dx / MCR; joyR.dy = dy / MCR;
       mcRightKnob.style.transform = `translate(calc(-50% + ${dx}px), calc(-50% + ${dy}px))`;
-      if (player && len > 8) {
-        mouseWorld.x = player.x + joyR.dx * 400;
-        mouseWorld.y = player.y + joyR.dy * 400;
-      }
     }
   }, { passive: true });
 
   window.addEventListener('touchend', e => {
     if (!joyR.active) return;
-    for (const t of e.changedTouches) {
-      if (t.identifier !== joyR.id) continue;
-      const wasTap = Math.hypot(joyR.dx, joyR.dy) < 0.2;
+    for (const touch of e.changedTouches) {
+      if (touch.identifier !== joyR.id) continue;
+      // 손 뗄 때 조이스틱 중심 기준 실제 드래그 방향 계산
+      const r = mcRight.getBoundingClientRect();
+      const rawDx = touch.clientX - (r.left + r.width / 2);
+      const rawDy = touch.clientY - (r.top  + r.height / 2);
+      const dragLen = Math.hypot(rawDx, rawDy);
+      const wasTap = dragLen < 10; // 10px 미만이면 탭
       joyR.active = false; joyR.dx = 0; joyR.dy = 0; resetKnob(mcRightKnob);
-      if (state !== 'playing') continue;
-      if (!player) continue;
+      if (state !== 'playing' || !player) continue;
       if (wasTap) {
         // 탭: 자동조준
         const enemies = getTargets('player');
         if (enemies.length === 0) continue;
-        const hasLOS = (en) => {
-          const steps = 12;
-          for (let i = 1; i <= steps; i++) {
-            const t = i / steps;
-            if (solid(player.x + (en.x - player.x) * t, player.y + (en.y - player.y) * t)) return false;
+        const hasLOS = en => {
+          for (let i = 1; i <= 12; i++) {
+            const s = i / 12;
+            if (solid(player.x + (en.x - player.x) * s, player.y + (en.y - player.y) * s)) return false;
           }
           return true;
         };
         const visible = enemies.filter(hasLOS);
         const pool = visible.length > 0 ? visible : enemies;
-        let nearest = pool[0];
-        let minD = Math.hypot(nearest.x - player.x, nearest.y - player.y);
+        let nearest = pool[0], minD = Math.hypot(nearest.x - player.x, nearest.y - player.y);
         for (const en of pool) {
           const d = Math.hypot(en.x - player.x, en.y - player.y);
           if (d < minD) { minD = d; nearest = en; }
         }
         mouseWorld.x = nearest.x;
         mouseWorld.y = nearest.y;
+      } else {
+        // 드래그: 조이스틱 방향으로 조준
+        const nx = rawDx / dragLen, ny = rawDy / dragLen;
+        mouseWorld.x = player.x + nx * 600;
+        mouseWorld.y = player.y + ny * 600;
       }
-      // 드래그: mouseWorld가 이미 drag 방향으로 설정됨
       tryShoot(false);
     }
   });
@@ -4149,11 +4151,18 @@ canvas.addEventListener('contextmenu', e => e.preventDefault());
     if (!joyS.active) return;
     for (const t of e.changedTouches) {
       if (t.identifier !== joyS.id) continue;
-      joyS.active = false;
-      const wasTap = Math.hypot(joyS.dx, joyS.dy) < 0.2;
-      joyS.dx = 0; joyS.dy = 0;
+      const sr = mcSuper.getBoundingClientRect();
+      const rawDx = t.clientX - (sr.left + sr.width / 2);
+      const rawDy = t.clientY - (sr.top  + sr.height / 2);
+      const dragLen = Math.hypot(rawDx, rawDy);
+      const wasTap = dragLen < 10;
+      joyS.active = false; joyS.dx = 0; joyS.dy = 0;
       mcSuper.style.transform = '';
-      if (state === 'playing') { if (wasTap) autoAimToNearest(); tryShoot(true); }
+      if (state === 'playing') {
+        if (wasTap) autoAimToNearest();
+        else if (player) { const nx = rawDx/dragLen, ny = rawDy/dragLen; mouseWorld.x = player.x + nx*600; mouseWorld.y = player.y + ny*600; }
+        tryShoot(true);
+      }
     }
   });
   window.addEventListener('touchcancel', e => {
