@@ -4052,29 +4052,28 @@ canvas.addEventListener('contextmenu', e => e.preventDefault());
       joyR.active = false; joyR.dx = 0; joyR.dy = 0; resetKnob(mcRightKnob);
       if (state !== 'playing') continue;
       // 벽 없이 보이는 가장 가까운 적 우선, 없으면 그냥 가장 가까운 적
-      if (player) {
-        const enemies = getTargets('player');
-        if (enemies.length > 0) {
-          const hasLOS = (en) => {
-            const steps = 12;
-            for (let i = 1; i <= steps; i++) {
-              const t = i / steps;
-              if (solid(player.x + (en.x - player.x) * t, player.y + (en.y - player.y) * t)) return false;
-            }
-            return true;
-          };
-          const visible = enemies.filter(hasLOS);
-          const pool = visible.length > 0 ? visible : enemies;
-          let nearest = pool[0];
-          let minD = Math.hypot(nearest.x - player.x, nearest.y - player.y);
-          for (const en of pool) {
-            const d = Math.hypot(en.x - player.x, en.y - player.y);
-            if (d < minD) { minD = d; nearest = en; }
-          }
-          mouseWorld.x = nearest.x;
-          mouseWorld.y = nearest.y;
+      // 적이 없으면 발사 안 함
+      if (!player) continue;
+      const enemies = getTargets('player');
+      if (enemies.length === 0) continue;
+      const hasLOS = (en) => {
+        const steps = 12;
+        for (let i = 1; i <= steps; i++) {
+          const t = i / steps;
+          if (solid(player.x + (en.x - player.x) * t, player.y + (en.y - player.y) * t)) return false;
         }
+        return true;
+      };
+      const visible = enemies.filter(hasLOS);
+      const pool = visible.length > 0 ? visible : enemies;
+      let nearest = pool[0];
+      let minD = Math.hypot(nearest.x - player.x, nearest.y - player.y);
+      for (const en of pool) {
+        const d = Math.hypot(en.x - player.x, en.y - player.y);
+        if (d < minD) { minD = d; nearest = en; }
       }
+      mouseWorld.x = nearest.x;
+      mouseWorld.y = nearest.y;
       tryShoot(false);
     }
   });
