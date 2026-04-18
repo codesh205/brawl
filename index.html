@@ -4031,8 +4031,8 @@ canvas.addEventListener('contextmenu', e => e.preventDefault());
     joyR.active = true; joyR.id = t.identifier; joyR.dx = 0; joyR.dy = 0;
   }, { passive: false });
 
-  mcRight.addEventListener('touchmove', e => {
-    e.preventDefault();
+  window.addEventListener('touchmove', e => {
+    if (!joyR.active) return;
     for (const t of e.changedTouches) {
       if (t.identifier !== joyR.id) continue;
       const r = mcRight.getBoundingClientRect();
@@ -4043,15 +4043,23 @@ canvas.addEventListener('contextmenu', e => e.preventDefault());
       joyR.dx = dx / MCR; joyR.dy = dy / MCR;
       mcRightKnob.style.transform = `translate(calc(-50% + ${dx}px), calc(-50% + ${dy}px))`;
     }
-  }, { passive: false });
+  }, { passive: true });
 
-  function endR(id) {
-    if (joyR.id !== id) return;
-    joyR.active = false; joyR.dx = 0; joyR.dy = 0; resetKnob(mcRightKnob);
-    if (state === 'playing') tryShoot(false);
-  }
-  mcRight.addEventListener('touchend',    e => { for (const t of e.changedTouches) endR(t.identifier); });
-  mcRight.addEventListener('touchcancel', e => { for (const t of e.changedTouches) endR(t.identifier); });
+  window.addEventListener('touchend', e => {
+    if (!joyR.active) return;
+    for (const t of e.changedTouches) {
+      if (t.identifier !== joyR.id) continue;
+      joyR.active = false; joyR.dx = 0; joyR.dy = 0; resetKnob(mcRightKnob);
+      if (state === 'playing') tryShoot(false);
+    }
+  });
+  window.addEventListener('touchcancel', e => {
+    if (!joyR.active) return;
+    for (const t of e.changedTouches) {
+      if (t.identifier !== joyR.id) continue;
+      joyR.active = false; joyR.dx = 0; joyR.dy = 0; resetKnob(mcRightKnob);
+    }
+  });
 
   // ── 슈퍼 조이스틱 (중앙 버튼, 밀어서 조준 → 떼면 발동)
   mcSuper.addEventListener('touchstart', e => {
