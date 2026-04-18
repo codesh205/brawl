@@ -3106,7 +3106,6 @@ function handlePlayerInput(dt) {
     if (len > 0.15 && player) {
       mouseWorld.x = player.x + joyR.dx * 300;
       mouseWorld.y = player.y + joyR.dy * 300;
-      tryShoot(false);
     }
   }
 
@@ -4048,7 +4047,9 @@ canvas.addEventListener('contextmenu', e => e.preventDefault());
 
   function endR(id) {
     if (joyR.id !== id) return;
+    const wasPushed = Math.hypot(joyR.dx, joyR.dy) > 0.15;
     joyR.active = false; joyR.dx = 0; joyR.dy = 0; resetKnob(mcRightKnob);
+    if (state === 'playing' && wasPushed) tryShoot(false);
   }
   mcRight.addEventListener('touchend',    e => { for (const t of e.changedTouches) endR(t.identifier); });
   mcRight.addEventListener('touchcancel', e => { for (const t of e.changedTouches) endR(t.identifier); });
