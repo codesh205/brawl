@@ -842,16 +842,18 @@ function shootBullets(ent, tx, ty, isSuper=false) {
     // 켄지 콤보: 찌르기(찌르기Ready) → 휘두르기
     if (ent.defKey === 'kenji' && !isSuper) {
       if (kenjiThrustReady) {
-        // 찌르기: 앞으로 조금 전진하면서 좁고 깊은 단일 히트박스, 높은 데미지
+        // 찌르기: 앞으로 돌진하며 좁고 깊은 히트박스 (너무 가까이 있으면 안 맞음)
         kenjiThrustReady = false;
-        const slideSpd = 7, slideFrames = 14;
+        const slideSpd = 11, slideFrames = 20;
         kenjiSlideState = { vx: Math.cos(angle)*slideSpd, vy: Math.sin(angle)*slideSpd, timer: slideFrames, maxTimer: slideFrames };
-        const hx = ent.x + Math.cos(angle)*reach*0.8;
-        const hy = ent.y + Math.sin(angle)*reach*0.8;
+        const thrustDist = reach * 2.0; // 찌르기 도달 거리 (200px)
+        const minHitDist = reach * 0.8; // 최소 피격 거리 (80px 이상이어야 맞음)
+        const hx = ent.x + Math.cos(angle)*thrustDist;
+        const hy = ent.y + Math.sin(angle)*thrustDist;
         let blocked = false;
         const steps = Math.ceil(Math.hypot(hx-ent.x,hy-ent.y)/(TS*0.35));
         for (let ms=1;ms<=steps;ms++) { const t=ms/steps; if(solid(ent.x+(hx-ent.x)*t,ent.y+(hy-ent.y)*t)){blocked=true;break;} }
-        if (!blocked) { const b=makeBullet(hx,hy,0,0,Math.round(d.dmg*1.4),owner,d.color,'melee',16); b.life=3; out.push(b); }
+        if (!blocked) { const b=makeBullet(hx,hy,0,0,Math.round(d.dmg*1.4),owner,d.color,'melee',18); b.life=3; out.push(b); }
       } else {
         // 휘두르기: 넓은 3방향 히트박스
         for (let i=-1;i<=1;i++) {
@@ -3104,8 +3106,10 @@ function handlePlayerInput(dt) {
   if (joyR.active) {
     const len = Math.hypot(joyR.dx, joyR.dy);
     if (len > 0.15 && player) {
-      mouseWorld.x = Math.max(TS, Math.min(MX*TS-TS, player.x + joyR.dx * 9999));
-      mouseWorld.y = Math.max(TS, Math.min(MY*TS-TS, player.y + joyR.dy * 9999));
+      const jrLen = len;
+      const jrDist = jrLen * (player.d.range || 300);
+      mouseWorld.x = Math.max(TS, Math.min(MX*TS-TS, player.x + (joyR.dx/jrLen)*jrDist));
+      mouseWorld.y = Math.max(TS, Math.min(MY*TS-TS, player.y + (joyR.dy/jrLen)*jrDist));
     }
   }
 
@@ -4106,8 +4110,9 @@ canvas.addEventListener('contextmenu', e => e.preventDefault());
       } else {
         // 드래그: 조이스틱 방향으로 조준 (맵 범위 내로 제한)
         const nx = rawDx / dragLen, ny = rawDy / dragLen;
-        mouseWorld.x = Math.max(TS, Math.min(MX*TS-TS, player.x + nx * 9999));
-        mouseWorld.y = Math.max(TS, Math.min(MY*TS-TS, player.y + ny * 9999));
+        const aimDist = Math.min(dragLen / MCR, 1) * (player.d.range || 300);
+        mouseWorld.x = Math.max(TS, Math.min(MX*TS-TS, player.x + nx * aimDist));
+        mouseWorld.y = Math.max(TS, Math.min(MY*TS-TS, player.y + ny * aimDist));
       }
       tryShoot(false);
     }
