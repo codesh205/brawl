@@ -3161,6 +3161,28 @@ function breakWalls(ox, oy, angle, steps, radius) {
 // 엘프리모 돌진 상태
 let dashState = null; // { vx, vy, timer, dmg }
 
+function autoAimToNearest() {
+  if (!player) return;
+  const enemies = getTargets('player');
+  if (enemies.length === 0) return;
+  const hasLOS = en => {
+    for (let i = 1; i <= 12; i++) {
+      const t = i / 12;
+      if (solid(player.x + (en.x - player.x) * t, player.y + (en.y - player.y) * t)) return false;
+    }
+    return true;
+  };
+  const visible = enemies.filter(hasLOS);
+  const pool = visible.length > 0 ? visible : enemies;
+  let nearest = pool[0], minD = Math.hypot(nearest.x - player.x, nearest.y - player.y);
+  for (const en of pool) {
+    const d = Math.hypot(en.x - player.x, en.y - player.y);
+    if (d < minD) { minD = d; nearest = en; }
+  }
+  mouseWorld.x = nearest.x;
+  mouseWorld.y = nearest.y;
+}
+
 function activateSuper() {
   if (!player || !player.alive) return;
   if (!player.superReady || superCooldown > 0) return;
@@ -3974,11 +3996,15 @@ canvas.addEventListener('contextmenu', e => e.preventDefault());
   function applyMobileLayout() {
     const vw = window.innerWidth;
     const vh = window.innerHeight;
-    const scale = Math.min(vw / W, (vh - PANEL_H) / H);
+    const bar = document.getElementById('trophy-bar');
+    const barH = (bar && bar.style.display !== 'none') ? bar.offsetHeight : 0;
+    const availH = vh - PANEL_H - barH;
+    const scale = Math.min(vw / W, availH / H);
     const wrap = document.getElementById('wrap');
     wrap.style.transform = `scale(${scale})`;
     wrap.style.transformOrigin = 'top left';
     wrap.style.marginLeft = `${(vw - W * scale) / 2}px`;
+    wrap.style.marginTop = `${barH}px`;
     wrap.style.marginBottom = `${-H * (1 - scale)}px`;
     document.body.style.flexDirection = 'column';
     document.body.style.justifyContent = 'flex-start';
@@ -4042,6 +4068,10 @@ canvas.addEventListener('contextmenu', e => e.preventDefault());
       if (len > MCR) { dx = dx/len*MCR; dy = dy/len*MCR; }
       joyR.dx = dx / MCR; joyR.dy = dy / MCR;
       mcRightKnob.style.transform = `translate(calc(-50% + ${dx}px), calc(-50% + ${dy}px))`;
+      if (player && len > 8) {
+        mouseWorld.x = player.x + joyR.dx * 400;
+        mouseWorld.y = player.y + joyR.dy * 400;
+      }
     }
   }, { passive: true });
 
@@ -4049,31 +4079,34 @@ canvas.addEventListener('contextmenu', e => e.preventDefault());
     if (!joyR.active) return;
     for (const t of e.changedTouches) {
       if (t.identifier !== joyR.id) continue;
+      const wasTap = Math.hypot(joyR.dx, joyR.dy) < 0.2;
       joyR.active = false; joyR.dx = 0; joyR.dy = 0; resetKnob(mcRightKnob);
       if (state !== 'playing') continue;
-      // 벽 없이 보이는 가장 가까운 적 우선, 없으면 그냥 가장 가까운 적
-      // 적이 없으면 발사 안 함
       if (!player) continue;
-      const enemies = getTargets('player');
-      if (enemies.length === 0) continue;
-      const hasLOS = (en) => {
-        const steps = 12;
-        for (let i = 1; i <= steps; i++) {
-          const t = i / steps;
-          if (solid(player.x + (en.x - player.x) * t, player.y + (en.y - player.y) * t)) return false;
+      if (wasTap) {
+        // 탭: 자동조준
+        const enemies = getTargets('player');
+        if (enemies.length === 0) continue;
+        const hasLOS = (en) => {
+          const steps = 12;
+          for (let i = 1; i <= steps; i++) {
+            const t = i / steps;
+            if (solid(player.x + (en.x - player.x) * t, player.y + (en.y - player.y) * t)) return false;
+          }
+          return true;
+        };
+        const visible = enemies.filter(hasLOS);
+        const pool = visible.length > 0 ? visible : enemies;
+        let nearest = pool[0];
+        let minD = Math.hypot(nearest.x - player.x, nearest.y - player.y);
+        for (const en of pool) {
+          const d = Math.hypot(en.x - player.x, en.y - player.y);
+          if (d < minD) { minD = d; nearest = en; }
         }
-        return true;
-      };
-      const visible = enemies.filter(hasLOS);
-      const pool = visible.length > 0 ? visible : enemies;
-      let nearest = pool[0];
-      let minD = Math.hypot(nearest.x - player.x, nearest.y - player.y);
-      for (const en of pool) {
-        const d = Math.hypot(en.x - player.x, en.y - player.y);
-        if (d < minD) { minD = d; nearest = en; }
+        mouseWorld.x = nearest.x;
+        mouseWorld.y = nearest.y;
       }
-      mouseWorld.x = nearest.x;
-      mouseWorld.y = nearest.y;
+      // 드래그: mouseWorld가 이미 drag 방향으로 설정됨
       tryShoot(false);
     }
   });
@@ -4116,9 +4149,11 @@ canvas.addEventListener('contextmenu', e => e.preventDefault());
     if (!joyS.active) return;
     for (const t of e.changedTouches) {
       if (t.identifier !== joyS.id) continue;
-      joyS.active = false; joyS.dx = 0; joyS.dy = 0;
+      joyS.active = false;
+      const wasTap = Math.hypot(joyS.dx, joyS.dy) < 0.2;
+      joyS.dx = 0; joyS.dy = 0;
       mcSuper.style.transform = '';
-      if (state === 'playing') tryShoot(true);
+      if (state === 'playing') { if (wasTap) autoAimToNearest(); tryShoot(true); }
     }
   });
   window.addEventListener('touchcancel', e => {
@@ -4445,12 +4480,21 @@ function startGame() {
   const PLAYER_ONLY_KEYS = ['8bit', 'feitan']; // 솔로: 봇 사용 불가 / 팀전: 적 봇 사용 불가
   const bk = Object.keys(DEFS).filter(k => !HXH_KEYS.includes(k));
   const bkNoPlayerOnly = bk.filter(k => !PLAYER_ONLY_KEYS.includes(k)); // 솔로봇·적봇용
+  // 보스 보상 캐릭터는 어려운 보스일수록 낮은 등장 확률 (일반=10, 보스1=3, 보스2=2, 보스3=1.5, 보스4=1, 보스5=0.5)
+  const BOSS_WEIGHTS = { darkking:3, skullking:2, flamelord:1.5, lightning:1, finaldemon:0.5 };
+  function weightedRandKey(pool) {
+    const weights = pool.map(k => BOSS_WEIGHTS[k] ?? 10);
+    const total = weights.reduce((a,b)=>a+b,0);
+    let r = Math.random()*total;
+    for (let i=0;i<pool.length;i++) { r-=weights[i]; if(r<=0) return pool[i]; }
+    return pool[pool.length-1];
+  }
 
   if (selMode==='solo') {
     // 솔로: 봇마다 고유 팀 번호 → 서로 + 플레이어 모두 적 (8bit·팸 봇 사용 불가)
     for (let i=0;i<9;i++) {
       const sp = safeSpawn('any');
-      const ent = makeEntity(sp.x, sp.y, bkNoPlayerOnly[Math.random()*bkNoPlayerOnly.length|0], 'solo_'+i);
+      const ent = makeEntity(sp.x, sp.y, weightedRandKey(bkNoPlayerOnly), 'solo_'+i);
       bots.push(ent);
     }
   } else {
@@ -4474,7 +4518,7 @@ function startGame() {
     }
     for (let i=0;i<enemyCount;i++) {
       const sp = safeSpawn('right');
-      bots.push(makeEntity(sp.x, sp.y, bkNoPlayerOnly[Math.random()*bkNoPlayerOnly.length|0], 'enemy'));
+      bots.push(makeEntity(sp.x, sp.y, weightedRandKey(bkNoPlayerOnly), 'enemy'));
     }
     if (selMode==='gemgrab') spawnGemCenter();
     if (selMode==='heist') { heistHp={ally:20000,enemy:20000}; }
