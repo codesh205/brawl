@@ -2,6 +2,7 @@
 <html lang="ko">
 <head>
 <meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
 <title>브롤 스타즈 클론</title>
 <style>
 * { margin:0; padding:0; box-sizing:border-box; }
@@ -54,12 +55,20 @@ canvas { display:block; cursor:crosshair; }
 /* 상단 트로피 표시 */
 #trophy-bar { position:fixed; top:0; left:0; right:0; background:rgba(0,0,0,0.85); color:#f5a623; font-size:15px; font-weight:bold; text-align:center; padding:6px; z-index:200; display:none; }
 
-/* 모바일 조이스틱 */
-.joy-base { position:absolute; width:130px; height:130px; border-radius:50%; background:rgba(255,255,255,0.1); border:3px solid rgba(255,255,255,0.25); display:none; pointer-events:none; transform:translate(-50%,-50%); z-index:10; }
-.joy-knob { position:absolute; width:54px; height:54px; border-radius:50%; background:rgba(255,255,255,0.4); border:2px solid rgba(255,255,255,0.6); top:50%; left:50%; transform:translate(-50%,-50%); transition:none; }
-#joy-super-base { position:absolute; right:25px; bottom:25px; width:100px; height:100px; border-radius:50%; background:rgba(245,166,35,0.18); border:3px solid rgba(245,166,35,0.65); display:none; z-index:10; touch-action:none; }
-#joy-super-label { position:absolute; top:50%; left:50%; transform:translate(-50%,-50%); color:#f5a623; font-size:12px; font-weight:bold; pointer-events:none; z-index:1; }
-#joy-super-knob { position:absolute; width:46px; height:46px; border-radius:50%; background:rgba(245,166,35,0.55); border:2px solid rgba(245,166,35,0.9); top:50%; left:50%; transform:translate(-50%,-50%); pointer-events:none; }
+/* 모바일 캔버스 오버레이 조이스틱 (미사용, 숨김 유지) */
+.joy-base { display:none !important; }
+#joy-super-base { display:none !important; }
+#joy-super-label { display:none; }
+#joy-super-knob  { display:none; }
+
+/* 하단 컨트롤 패널 */
+#mobile-controls { display:none; width:100%; height:160px; background:#12121e; border-top:2px solid #2a2a3e; flex-shrink:0; align-items:center; justify-content:space-between; padding:0 10px; box-sizing:border-box; }
+.mc-area { flex:1; height:100%; display:flex; align-items:center; justify-content:center; touch-action:none; user-select:none; -webkit-user-select:none; }
+.mc-base { width:112px; height:112px; border-radius:50%; background:rgba(255,255,255,0.07); border:3px solid rgba(255,255,255,0.2); position:relative; flex-shrink:0; }
+.mc-knob { position:absolute; width:50px; height:50px; border-radius:50%; background:rgba(255,255,255,0.38); border:2px solid rgba(255,255,255,0.65); top:50%; left:50%; transform:translate(-50%,-50%); pointer-events:none; }
+.mc-label { position:absolute; bottom:-20px; left:50%; transform:translateX(-50%); color:rgba(255,255,255,0.35); font-size:10px; white-space:nowrap; }
+.mc-center { width:100px; height:100%; display:flex; align-items:center; justify-content:center; flex-shrink:0; }
+#mc-super { width:74px; height:74px; border-radius:50%; background:linear-gradient(135deg,#f5a623,#a06000); border:3px solid rgba(255,255,255,0.5); color:#fff; font-size:13px; font-weight:bold; display:flex; align-items:center; justify-content:center; touch-action:none; user-select:none; -webkit-user-select:none; box-shadow:0 2px 12px #f5a62355; flex-shrink:0; }
 </style>
 </head>
 <body>
@@ -75,6 +84,23 @@ canvas { display:block; cursor:crosshair; }
     <div id="modeinfo"></div>
     <div id="superbar"></div>
     <div id="controls">WASD/방향키: 이동<br>마우스: 조준<br>클릭/Space: 공격<br>E: 슈퍼</div>
+  </div>
+</div>
+<div id="mobile-controls">
+  <div class="mc-area" id="mc-left">
+    <div class="mc-base">
+      <div class="mc-knob" id="mc-left-knob"></div>
+      <span class="mc-label">이동</span>
+    </div>
+  </div>
+  <div class="mc-center">
+    <div id="mc-super">슈퍼</div>
+  </div>
+  <div class="mc-area" id="mc-right">
+    <div class="mc-base">
+      <div class="mc-knob" id="mc-right-knob"></div>
+      <span class="mc-label">공격</span>
+    </div>
   </div>
 </div>
 <div id="menu">
@@ -3927,99 +3953,110 @@ canvas.addEventListener('mousedown', e => {
 canvas.addEventListener('contextmenu', e => e.preventDefault());
 
 // ────────────────────────────────────────────────────────────
-// 모바일 조이스틱
+// 모바일 하단 패널 조이스틱
 // ────────────────────────────────────────────────────────────
 (function setupJoystick() {
   if (!('ontouchstart' in window) && navigator.maxTouchPoints < 1) return;
 
-  const jLBase = document.getElementById('joy-left-base');
-  const jLKnob = document.getElementById('joy-left-knob');
-  const jRBase = document.getElementById('joy-right-base');
-  const jRKnob = document.getElementById('joy-right-knob');
-  const joySBase = document.getElementById('joy-super-base');
-  const joySKnob = document.getElementById('joy-super-knob');
-  const controlsEl = document.getElementById('controls');
-  const JS_R = 40; // 슈퍼 조이스틱 반지름
+  const controlsEl      = document.getElementById('controls');
+  const mobileControls  = document.getElementById('mobile-controls');
+  const mcLeft          = document.getElementById('mc-left');
+  const mcLeftKnob      = document.getElementById('mc-left-knob');
+  const mcRight         = document.getElementById('mc-right');
+  const mcRightKnob     = document.getElementById('mc-right-knob');
+  const mcSuper         = document.getElementById('mc-super');
+  const PANEL_H = 160;
+  const MCR = 46; // 패널 조이스틱 최대 반지름
 
-  function showBase(base, cx, cy) {
-    base.style.left = cx + 'px';
-    base.style.top  = cy + 'px';
-    base.style.display = 'block';
+  if (controlsEl) controlsEl.style.display = 'none';
+  canvas.style.touchAction = 'none';
+
+  // 캔버스를 세로 공간에 맞게 축소, 가로 중앙 정렬
+  function applyMobileLayout() {
+    const vw = window.innerWidth;
+    const vh = window.innerHeight;
+    const scale = Math.min(vw / W, (vh - PANEL_H) / H);
+    const wrap = document.getElementById('wrap');
+    wrap.style.transform = `scale(${scale})`;
+    wrap.style.transformOrigin = 'top left';
+    wrap.style.marginLeft = `${(vw - W * scale) / 2}px`;
+    wrap.style.marginBottom = `${-H * (1 - scale)}px`;
+    document.body.style.flexDirection = 'column';
+    document.body.style.justifyContent = 'flex-start';
+    document.body.style.alignItems = 'flex-start';
   }
-  function moveKnob(knob, dx, dy) {
-    knob.style.transform = `translate(calc(-50% + ${dx}px), calc(-50% + ${dy}px))`;
-  }
-  function hideBase(base, knob) {
-    base.style.display = 'none';
-    knob.style.transform = 'translate(-50%,-50%)';
+  window.addEventListener('resize', applyMobileLayout);
+
+  function resetKnob(k) { k.style.transform = 'translate(-50%,-50%)'; }
+
+  function resetAll() {
+    joyL.active = false; joyL.dx = 0; joyL.dy = 0; resetKnob(mcLeftKnob);
+    joyR.active = false; joyR.dx = 0; joyR.dy = 0; resetKnob(mcRightKnob);
+    joyS.active = false; joyS.dx = 0; joyS.dy = 0; mcSuper.style.transform = '';
   }
 
-  const JR = 55; // 조이스틱 최대 반지름
-
-  canvas.addEventListener('touchstart', e => {
-    if (state !== 'playing') return;
+  // ── 이동 조이스틱 (왼쪽)
+  mcLeft.addEventListener('touchstart', e => {
     e.preventDefault();
-    const rect = canvas.getBoundingClientRect();
+    if (state !== 'playing' || joyL.active) return;
+    const t = e.changedTouches[0];
+    joyL.active = true; joyL.id = t.identifier; joyL.dx = 0; joyL.dy = 0;
+  }, { passive: false });
+
+  mcLeft.addEventListener('touchmove', e => {
+    e.preventDefault();
     for (const t of e.changedTouches) {
-      const cx = t.clientX - rect.left;
-      const cy = t.clientY - rect.top;
-      if (cx < W / 2) {
-        if (!joyL.active) {
-          joyL.active = true; joyL.id = t.identifier;
-          joyL.bx = cx; joyL.by = cy; joyL.dx = 0; joyL.dy = 0;
-          showBase(jLBase, cx, cy);
-        }
-      } else {
-        if (!joyR.active) {
-          joyR.active = true; joyR.id = t.identifier;
-          joyR.bx = cx; joyR.by = cy; joyR.dx = 0; joyR.dy = 0;
-          showBase(jRBase, cx, cy);
-        }
-      }
+      if (t.identifier !== joyL.id) continue;
+      const r = mcLeft.getBoundingClientRect();
+      let dx = t.clientX - (r.left + r.width / 2);
+      let dy = t.clientY - (r.top  + r.height / 2);
+      const len = Math.hypot(dx, dy);
+      if (len > MCR) { dx = dx/len*MCR; dy = dy/len*MCR; }
+      joyL.dx = dx / MCR; joyL.dy = dy / MCR;
+      mcLeftKnob.style.transform = `translate(calc(-50% + ${dx}px), calc(-50% + ${dy}px))`;
     }
   }, { passive: false });
 
-  canvas.addEventListener('touchmove', e => {
-    if (state !== 'playing') return;
+  function endL(id) {
+    if (joyL.id !== id) return;
+    joyL.active = false; joyL.dx = 0; joyL.dy = 0; resetKnob(mcLeftKnob);
+  }
+  mcLeft.addEventListener('touchend',    e => { for (const t of e.changedTouches) endL(t.identifier); });
+  mcLeft.addEventListener('touchcancel', e => { for (const t of e.changedTouches) endL(t.identifier); });
+
+  // ── 공격 조이스틱 (오른쪽)
+  mcRight.addEventListener('touchstart', e => {
     e.preventDefault();
-    const rect = canvas.getBoundingClientRect();
+    if (state !== 'playing' || joyR.active) return;
+    const t = e.changedTouches[0];
+    joyR.active = true; joyR.id = t.identifier; joyR.dx = 0; joyR.dy = 0;
+  }, { passive: false });
+
+  mcRight.addEventListener('touchmove', e => {
+    e.preventDefault();
     for (const t of e.changedTouches) {
-      const cx = t.clientX - rect.left;
-      const cy = t.clientY - rect.top;
-      if (joyL.active && t.identifier === joyL.id) {
-        let dx = cx - joyL.bx, dy = cy - joyL.by;
-        const len = Math.hypot(dx, dy);
-        if (len > JR) { dx = dx/len*JR; dy = dy/len*JR; }
-        joyL.dx = dx / JR; joyL.dy = dy / JR;
-        moveKnob(jLKnob, dx, dy);
-      }
-      if (joyR.active && t.identifier === joyR.id) {
-        let dx = cx - joyR.bx, dy = cy - joyR.by;
-        const len = Math.hypot(dx, dy);
-        if (len > JR) { dx = dx/len*JR; dy = dy/len*JR; }
-        joyR.dx = dx / JR; joyR.dy = dy / JR;
-        moveKnob(jRKnob, dx, dy);
-      }
+      if (t.identifier !== joyR.id) continue;
+      const r = mcRight.getBoundingClientRect();
+      let dx = t.clientX - (r.left + r.width / 2);
+      let dy = t.clientY - (r.top  + r.height / 2);
+      const len = Math.hypot(dx, dy);
+      if (len > MCR) { dx = dx/len*MCR; dy = dy/len*MCR; }
+      joyR.dx = dx / MCR; joyR.dy = dy / MCR;
+      mcRightKnob.style.transform = `translate(calc(-50% + ${dx}px), calc(-50% + ${dy}px))`;
     }
   }, { passive: false });
 
-  function endTouch(id) {
-    if (joyL.active && joyL.id === id) {
-      joyL.active = false; joyL.dx = 0; joyL.dy = 0;
-      hideBase(jLBase, jLKnob);
-    }
-    if (joyR.active && joyR.id === id) {
-      joyR.active = false; joyR.dx = 0; joyR.dy = 0;
-      hideBase(jRBase, jRKnob);
-    }
+  function endR(id) {
+    if (joyR.id !== id) return;
+    joyR.active = false; joyR.dx = 0; joyR.dy = 0; resetKnob(mcRightKnob);
   }
-  canvas.addEventListener('touchend',    e => { if (state !== 'playing') return; e.preventDefault(); for (const t of e.changedTouches) endTouch(t.identifier); }, { passive: false });
-  canvas.addEventListener('touchcancel', e => { for (const t of e.changedTouches) endTouch(t.identifier); });
+  mcRight.addEventListener('touchend',    e => { for (const t of e.changedTouches) endR(t.identifier); });
+  mcRight.addEventListener('touchcancel', e => { for (const t of e.changedTouches) endR(t.identifier); });
 
-  // 슈퍼 조이스틱: 베이스에서 touchstart → window에서 move/end 추적
-  joySBase.addEventListener('touchstart', e => {
+  // ── 슈퍼 조이스틱 (중앙 버튼, 밀어서 조준 → 떼면 발동)
+  mcSuper.addEventListener('touchstart', e => {
     e.preventDefault(); e.stopPropagation();
-    if (state !== 'playing') return;
+    if (state !== 'playing' || joyS.active) return;
     const t = e.changedTouches[0];
     joyS.active = true; joyS.id = t.identifier; joyS.dx = 0; joyS.dy = 0;
   }, { passive: false });
@@ -4028,13 +4065,14 @@ canvas.addEventListener('contextmenu', e => e.preventDefault());
     if (!joyS.active) return;
     for (const t of e.changedTouches) {
       if (t.identifier !== joyS.id) continue;
-      const rect = joySBase.getBoundingClientRect();
-      const bcx = rect.left + rect.width / 2, bcy = rect.top + rect.height / 2;
-      let dx = t.clientX - bcx, dy = t.clientY - bcy;
+      const r = mcSuper.getBoundingClientRect();
+      let dx = t.clientX - (r.left + r.width / 2);
+      let dy = t.clientY - (r.top  + r.height / 2);
       const len = Math.hypot(dx, dy);
-      if (len > JS_R) { dx = dx/len*JS_R; dy = dy/len*JS_R; }
-      joyS.dx = dx / JS_R; joyS.dy = dy / JS_R;
-      joySKnob.style.transform = `translate(calc(-50% + ${dx}px), calc(-50% + ${dy}px))`;
+      const SR = 38;
+      if (len > SR) { dx = dx/len*SR; dy = dy/len*SR; }
+      joyS.dx = dx / SR; joyS.dy = dy / SR;
+      mcSuper.style.transform = `translate(${dx * 0.5}px, ${dy * 0.5}px)`;
       if (player && len > 8) {
         mouseWorld.x = player.x + joyS.dx * 300;
         mouseWorld.y = player.y + joyS.dy * 300;
@@ -4047,33 +4085,44 @@ canvas.addEventListener('contextmenu', e => e.preventDefault());
     for (const t of e.changedTouches) {
       if (t.identifier !== joyS.id) continue;
       joyS.active = false; joyS.dx = 0; joyS.dy = 0;
-      joySKnob.style.transform = 'translate(-50%,-50%)';
+      mcSuper.style.transform = '';
       if (state === 'playing') tryShoot(true);
     }
   });
+  window.addEventListener('touchcancel', e => {
+    if (!joyS.active) return;
+    for (const t of e.changedTouches) {
+      if (t.identifier !== joyS.id) continue;
+      joyS.active = false; joyS.dx = 0; joyS.dy = 0; mcSuper.style.transform = '';
+    }
+  });
 
-  // 게임 시작/종료 시 UI 표시 토글
+  // ── 게임 상태에 따른 패널 표시
   const origStartGame = window.startGame;
   window.startGame = function() {
     origStartGame && origStartGame();
-    joySBase.style.display = 'block';
-    if (controlsEl) controlsEl.style.display = 'none';
+    mobileControls.style.display = 'flex';
+    applyMobileLayout();
   };
   const origReturnMenu = window.returnMenu;
   window.returnMenu = function() {
     origReturnMenu && origReturnMenu();
-    joySBase.style.display = 'none';
-    joyL.active = false; hideBase(jLBase, jLKnob);
-    joyR.active = false; hideBase(jRBase, jRKnob);
-    joyS.active = false; joySKnob.style.transform = 'translate(-50%,-50%)';
+    mobileControls.style.display = 'none';
+    resetAll();
+    const wrap = document.getElementById('wrap');
+    wrap.style.transform = '';
+    wrap.style.marginLeft = '';
+    wrap.style.marginBottom = '';
+    document.body.style.flexDirection = '';
+    document.body.style.justifyContent = '';
+    document.body.style.alignItems = '';
   };
   const origReplayGame = window.replayGame;
   window.replayGame = function() {
     origReplayGame && origReplayGame();
-    joySBase.style.display = 'block';
-    joyL.active = false; hideBase(jLBase, jLKnob);
-    joyR.active = false; hideBase(jRBase, jRKnob);
-    joyS.active = false; joySKnob.style.transform = 'translate(-50%,-50%)';
+    mobileControls.style.display = 'flex';
+    applyMobileLayout();
+    resetAll();
   };
 })();
 
