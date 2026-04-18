@@ -3727,7 +3727,7 @@ function activateSuper() {
         player.d.dmg * 8, 'player', '#9c27b0', 'normal', 13);
       b.life = 45; b.isSuper = true; bullets.push(b);
     }
-    // 400ms 후 원래 자리로 귀환
+    // 150ms 후 원래 자리로 귀환
     setTimeout(() => {
       if (!player || !player.alive) return;
       spawnParts(player.x, player.y, '#9c27b0', 12);
