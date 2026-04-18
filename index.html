@@ -4049,12 +4049,11 @@ canvas.addEventListener('contextmenu', e => e.preventDefault());
     if (!joyR.active) return;
     for (const t of e.changedTouches) {
       if (t.identifier !== joyR.id) continue;
-      const wasDragged = Math.hypot(joyR.dx, joyR.dy) > 0.15;
       joyR.active = false; joyR.dx = 0; joyR.dy = 0; resetKnob(mcRightKnob);
       if (state !== 'playing') continue;
-      // 드래그 없이 탭 → 가장 가까운 적 자동 조준
-      if (!wasDragged && player) {
-        const enemies = getTargets('player').filter(t => t !== player);
+      // 항상 가장 가까운 적으로 스냅
+      if (player) {
+        const enemies = getTargets('player');
         if (enemies.length > 0) {
           let nearest = enemies[0];
           let minD = Math.hypot(nearest.x - player.x, nearest.y - player.y);
