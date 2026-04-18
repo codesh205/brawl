@@ -3104,8 +3104,8 @@ function handlePlayerInput(dt) {
   if (joyR.active) {
     const len = Math.hypot(joyR.dx, joyR.dy);
     if (len > 0.15 && player) {
-      mouseWorld.x = player.x + joyR.dx * 300;
-      mouseWorld.y = player.y + joyR.dy * 300;
+      mouseWorld.x = Math.max(TS, Math.min(MX*TS-TS, player.x + joyR.dx * 9999));
+      mouseWorld.y = Math.max(TS, Math.min(MY*TS-TS, player.y + joyR.dy * 9999));
     }
   }
 
@@ -4106,8 +4106,8 @@ canvas.addEventListener('contextmenu', e => e.preventDefault());
       } else {
         // 드래그: 조이스틱 방향으로 조준 (맵 범위 내로 제한)
         const nx = rawDx / dragLen, ny = rawDy / dragLen;
-        mouseWorld.x = Math.max(TS, Math.min(MX*TS-TS, player.x + nx * 600));
-        mouseWorld.y = Math.max(TS, Math.min(MY*TS-TS, player.y + ny * 600));
+        mouseWorld.x = Math.max(TS, Math.min(MX*TS-TS, player.x + nx * 9999));
+        mouseWorld.y = Math.max(TS, Math.min(MY*TS-TS, player.y + ny * 9999));
       }
       tryShoot(false);
     }
