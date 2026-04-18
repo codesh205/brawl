@@ -1,0 +1,4761 @@
+<!DOCTYPE html>
+<html lang="ko">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
+<title>브롤 스타즈 클론</title>
+<style>
+* { margin:0; padding:0; box-sizing:border-box; }
+body { background:#111; display:flex; flex-direction:column; align-items:center; justify-content:center; height:100vh; font-family:Arial,sans-serif; overflow:hidden; }
+#wrap { position:relative; }
+canvas { display:block; cursor:crosshair; }
+#hud { position:absolute; top:0; left:0; right:0; bottom:0; pointer-events:none; }
+#hp { position:absolute; top:10px; left:10px; color:#fff; font-size:14px; font-weight:bold; text-shadow:1px 1px 2px #000; }
+#score { position:absolute; top:10px; right:10px; color:#f5a623; font-size:15px; font-weight:bold; text-shadow:1px 1px 2px #000; }
+#superbar { position:absolute; bottom:12px; left:50%; transform:translateX(-50%); text-align:center; color:#fff; font-size:13px; font-weight:bold; text-shadow:1px 1px 3px #000; white-space:nowrap; }
+#modeinfo { position:absolute; top:10px; left:50%; transform:translateX(-50%); color:#fff; font-size:13px; font-weight:bold; text-shadow:1px 1px 3px #000; background:rgba(0,0,0,0.5); padding:4px 12px; border-radius:8px; }
+#controls { position:absolute; bottom:10px; right:10px; color:#aaa; font-size:11px; line-height:1.6; text-shadow:1px 1px 2px #000; }
+
+/* 메뉴 - 전체 뷰포트 */
+#menu { position:fixed; top:0;left:0;width:100vw;height:100vh; background:#111; display:flex; flex-direction:column; align-items:center; color:#fff; overflow-y:auto; padding:24px 20px 32px; z-index:100; }
+#menu h1 { font-size:40px; color:#f5a623; text-shadow:3px 3px 0 #a06000; margin-bottom:4px; }
+#menu p { color:#aaa; margin-bottom:14px; font-size:14px; }
+.section-label { color:#f5a623; font-size:13px; font-weight:bold; margin-bottom:8px; text-transform:uppercase; letter-spacing:2px; }
+.row { display:flex; gap:10px; margin-bottom:16px; flex-wrap:wrap; justify-content:center; width:100%; max-width:960px; }
+.card { width:100px; height:110px; border:3px solid #555; border-radius:12px; cursor:pointer; display:flex; flex-direction:column; align-items:center; justify-content:center; background:#222; transition:all .15s; font-size:11px; color:#ccc; gap:4px; }
+.card:hover { border-color:#f5a623; transform:scale(1.06); }
+.card.sel { border-color:#f5a623; background:#332200; box-shadow:0 0 14px #f5a62388; }
+.card .ico { font-size:32px; }
+.card .nm { font-weight:bold; color:#fff; font-size:12px; }
+.mcard { width:120px; height:68px; border:2px solid #555; border-radius:10px; cursor:pointer; display:flex; flex-direction:column; align-items:center; justify-content:center; background:#222; font-size:11px; color:#ccc; gap:3px; transition:all .15s; }
+.mcard:hover { border-color:#f5a623; }
+.mcard.sel { border-color:#f5a623; background:#332200; }
+.mcard .ico { font-size:22px; }
+.mcard .nm { font-weight:bold; color:#fff; font-size:12px; }
+.btn { background:linear-gradient(135deg,#f5a623,#d08000); color:#fff; border:none; padding:12px 36px; font-size:18px; font-weight:bold; border-radius:25px; cursor:pointer; margin:4px; box-shadow:0 3px 10px #f5a62355; transition:transform .1s; }
+.btn:hover { transform:scale(1.05); }
+.btn.gray { background:linear-gradient(135deg,#555,#333); box-shadow:none; }
+.btn.red  { background:linear-gradient(135deg,#e74c3c,#a00); box-shadow:0 3px 10px #e74c3c44; }
+
+/* 게임오버 */
+#gameover { position:fixed; top:0;left:0;width:100vw;height:100vh; background:rgba(0,0,0,0.88); display:none; flex-direction:column; align-items:center; justify-content:center; color:#fff; z-index:100; }
+#gameover .big { font-size:60px; margin-bottom:10px; }
+#gameover h2 { font-size:32px; margin-bottom:8px; }
+#gameover .sub { color:#f5a623; font-size:18px; margin-bottom:8px; }
+#gameover .trophy-info { font-size:22px; margin-bottom:6px; }
+#gameover .unlock-banner { background:#f5a623; color:#000; font-size:16px; font-weight:bold; padding:8px 20px; border-radius:12px; margin-bottom:18px; display:none; }
+
+/* 잠금 카드 */
+.card.locked { opacity:0.45; cursor:not-allowed; border-color:#444; }
+.card.locked:hover { transform:none; border-color:#444; }
+.card .trophy-req { font-size:11px; color:#f5a623; font-weight:bold; }
+.card .my-trophy { font-size:10px; color:#aaa; }
+.card .event-tag { font-size:10px; font-weight:bold; color:#fff; background:linear-gradient(90deg,#c62828,#7e57c2); border-radius:6px; padding:1px 6px; display:inline-block; margin-top:2px; letter-spacing:0.5px; }
+
+/* 상단 트로피 표시 */
+#trophy-bar { position:fixed; top:0; left:0; right:0; background:rgba(0,0,0,0.85); color:#f5a623; font-size:15px; font-weight:bold; text-align:center; padding:6px; z-index:200; display:none; }
+
+/* 모바일 캔버스 오버레이 조이스틱 (미사용, 숨김 유지) */
+.joy-base { display:none !important; }
+#joy-super-base { display:none !important; }
+#joy-super-label { display:none; }
+#joy-super-knob  { display:none; }
+
+/* 하단 컨트롤 패널 */
+#mobile-controls { display:none; width:100%; height:160px; background:#12121e; border-top:2px solid #2a2a3e; flex-shrink:0; align-items:center; justify-content:space-between; padding:0 10px; box-sizing:border-box; }
+.mc-area { flex:1; height:100%; display:flex; align-items:center; justify-content:center; touch-action:none; user-select:none; -webkit-user-select:none; }
+.mc-base { width:112px; height:112px; border-radius:50%; background:rgba(255,255,255,0.07); border:3px solid rgba(255,255,255,0.2); position:relative; flex-shrink:0; }
+.mc-knob { position:absolute; width:50px; height:50px; border-radius:50%; background:rgba(255,255,255,0.38); border:2px solid rgba(255,255,255,0.65); top:50%; left:50%; transform:translate(-50%,-50%); pointer-events:none; }
+.mc-label { position:absolute; bottom:-20px; left:50%; transform:translateX(-50%); color:rgba(255,255,255,0.35); font-size:10px; white-space:nowrap; }
+.mc-center { width:100px; height:100%; display:flex; align-items:center; justify-content:center; flex-shrink:0; }
+#mc-super { width:74px; height:74px; border-radius:50%; background:linear-gradient(135deg,#f5a623,#a06000); border:3px solid rgba(255,255,255,0.5); color:#fff; font-size:13px; font-weight:bold; display:flex; align-items:center; justify-content:center; touch-action:none; user-select:none; -webkit-user-select:none; box-shadow:0 2px 12px #f5a62355; flex-shrink:0; }
+</style>
+</head>
+<body>
+<div id="trophy-bar">🏆 총 트로피: <span id="total-trophy">0</span></div>
+<div id="wrap" style="display:none">
+  <canvas id="c"></canvas>
+  <div id="joy-left-base" class="joy-base"><div id="joy-left-knob" class="joy-knob"></div></div>
+  <div id="joy-right-base" class="joy-base"><div id="joy-right-knob" class="joy-knob"></div></div>
+  <div id="joy-super-base"><div id="joy-super-label">슈퍼</div><div id="joy-super-knob"></div></div>
+  <div id="hud">
+    <div id="hp"></div>
+    <div id="score"></div>
+    <div id="modeinfo"></div>
+    <div id="superbar"></div>
+    <div id="controls">WASD/방향키: 이동<br>마우스: 조준<br>클릭/Space: 공격<br>E: 슈퍼</div>
+  </div>
+</div>
+<div id="mobile-controls">
+  <div class="mc-area" id="mc-left">
+    <div class="mc-base">
+      <div class="mc-knob" id="mc-left-knob"></div>
+      <span class="mc-label">이동</span>
+    </div>
+  </div>
+  <div class="mc-center">
+    <div id="mc-super">슈퍼</div>
+  </div>
+  <div class="mc-area" id="mc-right">
+    <div class="mc-base">
+      <div class="mc-knob" id="mc-right-knob"></div>
+      <span class="mc-label">공격</span>
+    </div>
+  </div>
+</div>
+<div id="menu">
+  <h1>⭐ BRAWL STARS ⭐</h1>
+  <p>브롤러와 모드를 선택하세요</p>
+  <div class="section-label">🎮 모드</div>
+  <div class="row" id="modeRow"></div>
+  <div class="section-label">🦸 브롤러</div>
+  <div class="row" id="brawlerRow"></div>
+  <button class="btn" onclick="startGame()">🎮 게임 시작!</button>
+  <button class="btn red" style="font-size:13px;padding:8px 22px;margin-top:18px;" onclick="resetAllData()">🗑️ 처음부터 (초기화)</button>
+  <button class="btn gray" style="font-size:13px;padding:8px 22px;margin-top:4px;" onclick="resetBossWave()">👹 보스 웨이브 초기화 (1웨이브부터)</button>
+</div>
+<div id="gameover">
+  <div class="big" id="goEmoji"></div>
+  <h2 id="goText"></h2>
+  <div class="sub" id="goSub"></div>
+  <div class="trophy-info" id="goTrophy"></div>
+  <div class="unlock-banner" id="goUnlock"></div>
+  <div id="goStats" style="margin-bottom:16px;background:rgba(255,255,255,0.07);border-radius:12px;padding:10px 24px;font-size:15px;line-height:2;text-align:center;display:none;"></div>
+  <button class="btn" onclick="returnMenu()">메뉴로</button>
+  <button class="btn" onclick="replayGame()">다시 플레이</button>
+</div>
+
+<script>
+"use strict";
+
+// ────────────────────────────────────────────────────────────
+// 사운드 시스템 (Web Audio API - 외부 파일 없이 procedural 생성)
+// ────────────────────────────────────────────────────────────
+const SFX = (() => {
+  let _ctx = null;
+  function ac() {
+    if (!_ctx) _ctx = new (window.AudioContext || window.webkitAudioContext)();
+    if (_ctx.state === 'suspended') _ctx.resume();
+    return _ctx;
+  }
+  // 오실레이터 기반 단순음
+  function tone(freq, type, dur, vol=0.25, freqEnd=null, delay=0) {
+    try {
+      const c = ac();
+      const osc = c.createOscillator();
+      const g = c.createGain();
+      osc.connect(g); g.connect(c.destination);
+      osc.type = type;
+      osc.frequency.setValueAtTime(freq, c.currentTime + delay);
+      if (freqEnd) osc.frequency.exponentialRampToValueAtTime(freqEnd, c.currentTime + delay + dur);
+      g.gain.setValueAtTime(vol, c.currentTime + delay);
+      g.gain.exponentialRampToValueAtTime(0.001, c.currentTime + delay + dur);
+      osc.start(c.currentTime + delay);
+      osc.stop(c.currentTime + delay + dur + 0.01);
+    } catch(e) {}
+  }
+  // 화이트 노이즈
+  function noise(dur, vol=0.2, delay=0) {
+    try {
+      const c = ac();
+      const n = Math.ceil(c.sampleRate * dur);
+      const buf = c.createBuffer(1, n, c.sampleRate);
+      const d = buf.getChannelData(0);
+      for (let i=0;i<n;i++) d[i] = Math.random()*2-1;
+      const src = c.createBufferSource(); src.buffer = buf;
+      const g = c.createGain();
+      g.gain.setValueAtTime(vol, c.currentTime + delay);
+      g.gain.exponentialRampToValueAtTime(0.001, c.currentTime + delay + dur);
+      src.connect(g); g.connect(c.destination);
+      src.start(c.currentTime + delay);
+      src.stop(c.currentTime + delay + dur + 0.01);
+    } catch(e) {}
+  }
+
+  return {
+    shoot(atkType) {
+      switch(atkType) {
+        case 'shotgun':
+          noise(0.12, 0.3);
+          tone(110, 'sawtooth', 0.12, 0.18, 60);
+          break;
+        case 'bullet':
+          tone(900, 'square', 0.07, 0.18, 500);
+          noise(0.05, 0.08);
+          break;
+        case 'melee':
+          noise(0.09, 0.22);
+          tone(90, 'sine', 0.12, 0.35, 50);
+          break;
+        case 'lob':
+          tone(350, 'sine', 0.18, 0.22, 180);
+          break;
+        case 'sniper':
+          noise(0.06, 0.12);
+          tone(1400, 'sawtooth', 0.03, 0.3, 200);
+          break;
+        case 'spike':
+          tone(650, 'square', 0.08, 0.15, 400);
+          tone(550, 'square', 0.06, 0.1, 350, 0.04);
+          break;
+        case 'triple':
+          tone(750, 'square', 0.06, 0.12, 500);
+          tone(700, 'square', 0.06, 0.11, 480, 0.03);
+          tone(650, 'square', 0.06, 0.1,  450, 0.06);
+          break;
+        case 'bounce':
+          tone(950, 'sine', 0.09, 0.2, 600);
+          break;
+        default:
+          tone(700, 'square', 0.07, 0.15, 450);
+      }
+    },
+    hit() {
+      noise(0.1, 0.45);
+      tone(160, 'sawtooth', 0.12, 0.5, 80);
+    },
+    bulletImpact() {
+      noise(0.04, 0.18);
+    },
+    kill() {
+      tone(440, 'sine', 0.08, 0.45);
+      tone(660, 'sine', 0.1,  0.4, 880, 0.06);
+      tone(880, 'sine', 0.14, 0.35, 1200, 0.12);
+    },
+    playerDeath() {
+      noise(0.18, 0.4);
+      tone(350, 'sine', 0.28, 0.5, 200);
+      tone(220, 'sine', 0.38, 0.45, 130, 0.2);
+      tone(140, 'sine', 0.5,  0.4, 80, 0.38);
+    },
+    superActivate() {
+      tone(500, 'sine', 0.08, 0.38, 700);
+      tone(700, 'sine', 0.08, 0.32, 900, 0.07);
+      tone(900, 'sine', 0.18, 0.26, 1100, 0.14);
+    },
+    gemCollect() {
+      tone(1050, 'sine', 0.08, 0.22, 1300);
+      tone(1300, 'sine', 0.1,  0.18, 1600, 0.07);
+    },
+    lobExplode() {
+      noise(0.22, 0.35);
+      tone(130, 'sawtooth', 0.28, 0.38, 60);
+    },
+    wallBounce() {
+      tone(800, 'sine', 0.05, 0.12, 600);
+    },
+    victory() {
+      const notes = [523, 659, 784, 1047, 1175];
+      notes.forEach((f, i) => tone(f, 'sine', 0.28, 0.35, f*1.05, i*0.13));
+    },
+    defeat() {
+      const notes = [440, 370, 311, 262];
+      notes.forEach((f, i) => tone(f, 'sine', 0.3, 0.32, f*0.85, i*0.15));
+    },
+    menuClick() {
+      tone(650, 'sine', 0.07, 0.18, 750);
+    },
+    botShoot(atkType) {
+      // 봇 공격 소리 (플레이어보다 약간 작게)
+      switch(atkType) {
+        case 'shotgun':  noise(0.09, 0.15); break;
+        case 'bullet':   tone(800, 'square', 0.05, 0.1, 500); break;
+        case 'melee':    noise(0.06, 0.12); break;
+        case 'lob':      tone(300, 'sine', 0.12, 0.12, 160); break;
+        case 'sniper':   tone(1200, 'sawtooth', 0.03, 0.15, 200); break;
+        default:         tone(650, 'square', 0.05, 0.1, 400); break;
+      }
+    },
+    entityDeath() {
+      // 봇/엔티티 사망 소리
+      noise(0.08, 0.25);
+      tone(280, 'sine', 0.1, 0.3, 130);
+    },
+  };
+})();
+
+// ────────────────────────────────────────────────────────────
+// 상수
+// ────────────────────────────────────────────────────────────
+const W = 800, H = 600;
+const TS = 40;          // 타일 크기
+const MX = 20, MY = 15; // 맵 크기 (타일 수)
+
+const T = { EMPTY:0, WALL:1, BUSH:2 };
+
+const canvas = document.getElementById('c');
+const ctx    = canvas.getContext('2d');
+canvas.width  = W;
+canvas.height = H;
+
+// ────────────────────────────────────────────────────────────
+// 브롤러 정의
+// ────────────────────────────────────────────────────────────
+const DEFS = {
+  // regen: 초당 회복량 (0이면 재생 없음), regenDelay: 마지막 피격 후 재생 시작까지 대기 시간(초)
+  // ── 트로피 요구량 낮은 순 (약한 → 강한) ──
+  shelly:  { name:'쉘리',        ico:'👧', color:'#e74c3c', hp:5600, spd:3.0, dmg:280, range:280, reload:1.5, atk:'shotgun', pellets:5, spread:0.5, desc:'산탄총',       superDesc:'💥 슈퍼 샷건 (벽 파괴)',         regen:200, regenDelay:3.0 }, // 🏆0
+  colt:    { name:'콜트',        ico:'🤠', color:'#3498db', hp:3400, spd:3.3, dmg:120, range:480, reload:1.2, atk:'bullet',                          desc:'빠른 총',      superDesc:'🔫 탄막 폭풍 (25발 연사)',        regen:130, regenDelay:3.5 }, // 🏆10
+  elprimo: { name:'엘프리모',    ico:'💪', color:'#9b59b6', hp:8000, spd:2.8, dmg:700, range:90,  reload:0.9, atk:'melee',                           desc:'근접 격투',    superDesc:'🚀 엘보 드롭 (마우스로 돌진)',   regen:500, regenDelay:2.5 }, // 🏆30
+  barley:  { name:'발리',        ico:'🍺', color:'#e67e22', hp:3800, spd:2.7, dmg:200, range:300, reload:2.0, atk:'lob',                             desc:'투척 공격',    superDesc:'🍺 라스트 콜 (5발 투척)',        regen:110, regenDelay:3.5 }, // 🏆50
+  piper:   { name:'파이퍼',      ico:'💅', color:'#e91e63', hp:2800, spd:3.0, dmg:800, range:600, reload:2.2, atk:'sniper',                          desc:'저격수',       superDesc:'🌸 핫에어 (뒤로 점프+폭발)',     regen:80,  regenDelay:4.0 }, // 🏆80
+  bull:    { name:'불',          ico:'🐂', color:'#795548', hp:7200, spd:2.7, dmg:460, range:200, reload:1.8, atk:'shotgun', pellets:4, spread:0.4,  desc:'탱커 산탄총',  superDesc:'💨 인피니트 암모 (돌진+벽 파괴)', regen:350, regenDelay:2.0 }, // 🏆120
+  edgar:   { name:'에드거',      ico:'🖤', color:'#2c2c54', hp:4200, spd:3.6, dmg:500, range:80,  reload:0.7, atk:'melee',                           desc:'빠른 근접',    superDesc:'🦘 레츠플라이 (마우스로 도약)',  regen:600, regenDelay:1.5 }, // 🏆160
+  nita:    { name:'니타',        ico:'🐻', color:'#e91e8c', hp:4800, spd:3.0, dmg:400, range:350, reload:1.6, atk:'bullet',                          desc:'광선 공격',    superDesc:'🐻 곰 소환 (강력한 근접 유닛)', regen:150, regenDelay:3.0 }, // 🏆200
+  spike:   { name:'스파이크',    ico:'🌵', color:'#66bb6a', hp:2800, spd:2.9, dmg:360, range:400, reload:1.8, atk:'spike',                           desc:'선인장 침',    superDesc:'🌵 슈퍼 가시 (광역 슬로)',       regen:90,  regenDelay:3.5 }, // 🏆250
+  mortis:  { name:'모티스',      ico:'⚰', color:'#4a148c', hp:4600, spd:3.4, dmg:600, range:100, reload:1.5, atk:'melee',                           desc:'삽 근접',      superDesc:'🧛 흡혈 (적 체력 흡수)',         regen:200, regenDelay:2.0 }, // 🏆360
+  penny:   { name:'페니',        ico:'🪙', color:'#f57f17', hp:4000, spd:2.9, dmg:500, range:400, reload:2.0, atk:'lob',                             desc:'코인 투척',    superDesc:'💣 대포 설치 (고정 포탑)',        regen:120, regenDelay:3.0 }, // 🏆420
+  gene:    { name:'지니',        ico:'🧞', color:'#7b1fa2', hp:4200, spd:2.9, dmg:460, range:420, reload:1.9, atk:'bullet',                          desc:'마법 손바닥',  superDesc:'🪄 마법 손 (적 끌어당김)',        regen:100, regenDelay:3.0 }, // 🏆500
+  tara:    { name:'타라',        ico:'🔮', color:'#880e4f', hp:3600, spd:3.1, dmg:320, range:380, reload:1.4, atk:'triple',                          desc:'3장 카드',     superDesc:'🌀 블랙홀 (적 집결)',             regen:120, regenDelay:3.0 }, // 🏆580
+  frank:   { name:'프랭크',      ico:'🔨', color:'#546e7a', hp:9600, spd:2.4, dmg:900, range:110, reload:1.3, atk:'melee',                           desc:'강타 근접',    superDesc:'🔨 대형 해머 (광역 기절)',        regen:600, regenDelay:2.0 }, // 🏆660
+  bo:      { name:'보',          ico:'🏹', color:'#76c442', hp:3800, spd:3.1, dmg:150, range:450, reload:1.5, atk:'arrow',                           desc:'3발 화살',     superDesc:'🏹 파워 화살',        regen:120, regenDelay:3.0 }, // 🏆750
+  feitan:  { name:'팸',          ico:'☀️', color:'#ff6d00', hp:7000,  spd:2.4, dmg:380,  range:300, reload:1.4,  atk:'bullet',                               desc:'6발 시간차 연사', superDesc:'💊 치유 포탑 (HP 회복)',        regen:300,  regenDelay:2.5 }, // 🏆760
+  crow:    { name:'크로우',      ico:'🐦', color:'#1a237e', hp:3200, spd:3.8, dmg:230, range:350, reload:1.0, atk:'triple',                          desc:'3방향 단검',   superDesc:'🦅 초고속 도약',                 regen:150, regenDelay:3.0 }, // 🏆800
+  rico:    { name:'리코',        ico:'🎱', color:'#0097a7', hp:3600, spd:3.2, dmg:340, range:500, reload:1.3, atk:'bounce',                          desc:'반사 탄환',    superDesc:'🎱 슈퍼 반사 (5발 연속)',        regen:110, regenDelay:3.0 }, // 🏆850
+  jessie:  { name:'제시',        ico:'⚡', color:'#f9a825', hp:4400, spd:3.0, dmg:420, range:380, reload:1.7, atk:'bounce',                          desc:'전기 반사',    superDesc:'🤖 스크루볼트 (터렛 소환)',      regen:150, regenDelay:3.0 }, // 🏆950
+  gon:     { name:'곤',          ico:'🌿', color:'#4caf50', hp:5200, spd:3.2, dmg:580, range:90,  reload:0.85,atk:'melee',                           desc:'넨 근접 격투',  superDesc:'👊 재잰켄 바위 (광역 강타+벽 파괴)', regen:400, regenDelay:2.0 }, // 🏆1000
+  dynamike:{ name:'다이나마이크', ico:'💣', color:'#ff6f00', hp:3200, spd:2.8, dmg:280, range:320, reload:1.8, atk:'lob',                            desc:'폭탄 투척',    superDesc:'💥 빅 붐 (초대형 폭탄)',         regen:90,  regenDelay:3.5 }, // 🏆1100
+  '8bit':  { name:'8비트',       ico:'🕹', color:'#e53935', hp:6400, spd:2.2, dmg:480, range:500, reload:1.6, atk:'arrow',                          desc:'레이저 총',    superDesc:'⬆ 데미지 부스터 (팀 강화)',      regen:200, regenDelay:3.0 }, // 🏆1300
+  sandy:   { name:'샌디',        ico:'🏖', color:'#fdd835', hp:4200, spd:3.2, dmg:320, range:380, reload:1.4, atk:'triple',                          desc:'모래 투척',    superDesc:'🌀 모래폭풍 (팀 은신)',           regen:100, regenDelay:3.0 }, // 🏆1500
+  leorio:  { name:'레오리오',    ico:'💼', color:'#1565c0', hp:6500, spd:3.2, dmg:900, range:520, reload:1.0, atk:'bullet',                          desc:'넨 포털 펀치', superDesc:'👊 포털 폭발 (마우스 위치 폭발)',  regen:200, regenDelay:2.5 }, // 🏆2000
+  kenji:   { name:'켄지',        ico:'⚔️', color:'#9c27b0', hp:5500, spd:3.8, dmg:800,  range:100, reload:0.6,  atk:'melee',                           desc:'찌르기→휘두르기 콤보', superDesc:'❌ 환영 참격 (X자 공격 후 귀환)',    regen:450, regenDelay:1.8 }, // 🏆2500
+  kurapika:{ name:'크라피카',    ico:'⛓', color:'#c62828', hp:4000, spd:3.4, dmg:460, range:430, reload:1.3, atk:'triple',                          desc:'사슬 공격',    superDesc:'⛓ 체인 감옥 (다중 적 속박+데미지)', regen:100, regenDelay:3.0 }, // 🏆3000
+  killua:  { name:'키르아',      ico:'🤍', color:'#90a4ae', hp:6500, spd:4.8, dmg:1200, range:95, reload:0.5, atk:'melee',                           desc:'전광석화 근접', superDesc:'⚡ 갓스피드 (순간이동+전격)',       regen:600, regenDelay:1.0 }, // 🏆4000
+  sirius:  { name:'시리우스',    ico:'🌟', color:'#7b1fa2', hp:8500, spd:3.5, dmg:1600, range:560, reload:1.4, atk:'sirius',                          desc:'직선+로브 동시', superDesc:'🔮 분신술 (분신 3개 소환)',            regen:600,  regenDelay:1.5 }, // 🏆4500
+  hisoka:  { name:'히소카',      ico:'🃏', color:'#7e57c2', hp:12000, spd:4.2, dmg:800, range:120, reload:0.45, atk:'melee',                          desc:'카드+근접',    superDesc:'🩷 번지검 (주변 전체 5000 데미지)',   regen:1000, regenDelay:1.0 }, // 🏆5000
+  darkking:  { name:'다크킹',    ico:'👹', color:'#8b0000', hp:6000, spd:3.2, dmg:900,  range:300, reload:1.2, atk:'shotgun', pellets:4, spread:0.35, desc:'어둠의 산탄',   superDesc:'💀 어둠의 충격파',          regen:400, regenDelay:2.0 }, // 보스1 보상
+  skullking: { name:'해골군주',  ico:'💀', color:'#37474f', hp:7000, spd:3.4, dmg:1000, range:350, reload:1.0, atk:'triple',                             desc:'해골 단검',   superDesc:'🦴 뼈의 폭풍 (넓은 산탄)',  regen:450, regenDelay:2.0 }, // 보스2 보상
+  flamelord: { name:'화염군주',  ico:'🔥', color:'#e65100', hp:8000, spd:3.5, dmg:400, range:380, reload:1.4, atk:'lob',                                desc:'화염 투척',   superDesc:'🔥 화염 폭풍 (연속 투척)',  regen:500, regenDelay:1.8 }, // 보스3 보상
+  lightning: { name:'번개황제',  ico:'⚡', color:'#1a237e', hp:8500, spd:3.8, dmg:1200, range:500, reload:0.8, atk:'bounce',                             desc:'번개 반사탄', superDesc:'⚡ 번개 폭발 (순간이동+전격)',regen:550, regenDelay:1.5 }, // 보스4 보상
+  finaldemon: { name:'최종악마', ico:'😈', color:'#4a0080', hp:10000,spd:4.0, dmg:1500, range:400, reload:0.7, atk:'shotgun', pellets:6, spread:0.6,      desc:'악마의 강타', superDesc:'😈 지옥문 (극한 광역 폭발)', regen:700, regenDelay:1.2 }, // 보스5 보상
+  mystery: { name:'?',           ico:'❓', color:'#b71c1c', hp:10000,spd:3.8, dmg:2200,range:600, reload:0.8, atk:'bounce',                           desc:'??? 반사탄',   superDesc:'💥 ??? (극한 반사 폭풍)',          regen:800, regenDelay:1.0 }, // 🏆10000
+};
+
+// ────────────────────────────────────────────────────────────
+// 상태
+// ────────────────────────────────────────────────────────────
+// ────────────────────────────────────────────────────────────
+// 트로피 시스템
+// ────────────────────────────────────────────────────────────
+// 각 브롤러별 해금에 필요한 트로피 수
+const BRAWLER_TROPHY_REQ = {
+  shelly:   0,    // 기본 해금
+  colt:     10,
+  elprimo:  30,
+  barley:   50,
+  piper:    80,
+  bull:     120,
+  edgar:    160,
+  nita:     200,
+  spike:    250,
+  mortis:   360,
+  penny:    420,
+  gene:     500,
+  tara:     580,
+  frank:    660,
+  bo:       750,
+  feitan:   760,
+  crow:     800,
+  rico:     850,
+  jessie:   950,
+  gon:      1000,
+  dynamike: 1100,
+  '8bit':   1300,
+  sandy:    1500,
+  leorio:   2000,
+  kenji:    2500,
+  kurapika: 3000,
+  killua:   4000,
+  hisoka:   5000,
+  sirius:   4500,
+  darkking: 0, skullking: 0, flamelord: 0, lightning: 0, finaldemon: 0,
+  mystery:  50000,
+};
+
+// 트로피는 localStorage에 저장
+function loadTrophies() {
+  try {
+    const saved = localStorage.getItem('brawl_trophies');
+    const data = saved ? JSON.parse(saved) : { total: 0, perBrawler: { shelly: 0 }, unlocked: ['shelly'] };
+    if (!data.unlocked) data.unlocked = ['shelly']; // 구버전 호환
+    return data;
+  } catch(e) { return { total: 0, perBrawler: { shelly: 0 }, unlocked: ['shelly'] }; }
+}
+function saveTrophies() {
+  try { localStorage.setItem('brawl_trophies', JSON.stringify(trophyData)); } catch(e) {}
+}
+function resetBossWave() {
+  if (!confirm('보스 웨이브를 1웨이브(다크 킹)로 초기화할까요?')) return;
+  try { localStorage.setItem('brawl_boss_wave', '1'); } catch(e) {}
+  alert('✅ 보스 웨이브가 1웨이브로 초기화됐습니다!');
+}
+
+function resetAllData() {
+  if (!confirm('정말 처음부터 시작하시겠습니까?\n트로피와 해금 기록이 모두 초기화됩니다!')) return;
+  trophyData = { total: 0, perBrawler: { shelly: 0 }, unlocked: ['shelly'], unlockedModes: ['solo'] };
+  saveTrophies();
+  selBrawler = 'shelly';
+  selMode    = 'solo';
+  // 게임 루프 완전히 중지
+  if (raf) { cancelAnimationFrame(raf); raf = null; }
+  // 화면 정리
+  document.getElementById('gameover').style.display = 'none';
+  document.getElementById('wrap').style.display    = 'none';
+  document.getElementById('menu').style.display    = 'flex';
+  state = 'menu';
+  returnMenu();
+}
+
+let trophyData = loadTrophies();
+
+// 브롤러 해금 여부 — 한 번 해금되면 트로피가 줄어도 유지
+function isUnlocked(key) {
+  if (!trophyData.unlocked) trophyData.unlocked = ['shelly'];
+  // mystery는 항상 트로피 조건으로만 판단 (unlocked 목록 무시)
+  if (key === 'mystery') {
+    return (trophyData.total || 0) >= 50000;
+  }
+  // 보스 보상 캐릭터: 해당 웨이브 클리어 시 해금
+  const bossRewards = { darkking:'1', skullking:'2', flamelord:'3', lightning:'4', finaldemon:'5' };
+  if (bossRewards[key] !== undefined) {
+    try { return !!localStorage.getItem('brawl_boss_reward_'+bossRewards[key]); } catch(e) { return false; }
+  }
+  if (trophyData.unlocked.includes(key)) return true;
+  if ((trophyData.total || 0) >= (BRAWLER_TROPHY_REQ[key] || 0)) {
+    trophyData.unlocked.push(key);
+    saveTrophies();
+    return true;
+  }
+  return false;
+}
+// 모드 해금 여부 — 한 번 해금되면 트로피가 줄어도 유지
+function isModeUnlocked(m) {
+  if (!trophyData.unlockedModes) trophyData.unlockedModes = ['solo'];
+  if (trophyData.unlockedModes.includes(m.id)) return true;
+  if ((trophyData.total || 0) >= m.req) {
+    trophyData.unlockedModes.push(m.id);
+    saveTrophies();
+    return true;
+  }
+  return false;
+}
+
+// 게임 결과에 따라 트로피 증감
+function applyTrophyResult(win, soloRank=null) {
+  let gain;
+  if (selMode === 'solo' && soloRank !== null) {
+    // 솔로 쇼다운 순위별 트로피
+    if      (soloRank === 1) gain = 8;
+    else if (soloRank === 2) gain = 3;
+    else if (soloRank === 3) gain = 1;
+    else if (soloRank === 4) gain = 0;
+    else                     gain = -3;
+  } else if (selMode === 'boss') {
+    gain = win ? bossWave * 100 : -3;
+  } else {
+    gain = win ? 8 : -3;
+  }
+  trophyData.total = Math.max(0, (trophyData.total||0) + gain);
+  if (!trophyData.perBrawler) trophyData.perBrawler = {};
+  const prev = trophyData.perBrawler[selBrawler] || 0;
+  trophyData.perBrawler[selBrawler] = Math.max(0, prev + gain);
+  saveTrophies();
+  updateTrophyBar();
+
+  // 새로 해금된 브롤러 확인 (이미 해금된 건 제외 - 트로피 낮아졌다 다시 높아질 때 중복 알림 방지)
+  const newUnlocks = Object.keys(BRAWLER_TROPHY_REQ).filter(k => {
+    const req = BRAWLER_TROPHY_REQ[k];
+    return req > 0 && trophyData.total >= req && (trophyData.total - gain) < req
+      && !(trophyData.unlocked||[]).includes(k);
+  });
+  return { gain, newUnlocks, soloRank };
+}
+
+function updateTrophyBar() {
+  const bar = document.getElementById('trophy-bar');
+  const span = document.getElementById('total-trophy');
+  if (span) span.textContent = trophyData.total || 0;
+  if (bar) bar.style.display = 'block';
+}
+
+let selBrawler = 'shelly';
+let selMode    = 'solo';
+let state      = 'menu'; // menu | playing | over
+let lastAllyKeys = null; // 다시 플레이용 이전 팀원 저장
+let isReplay   = false;
+
+let map = [];
+let cam = { x:0, y:0 };
+
+let player = null;
+let bots   = [];
+let bullets = [];
+let particles = [];
+let gems   = [];
+
+let keys   = {};
+let mouseWorld = { x:0, y:0 };
+const joyL = { active:false, id:-1, bx:0, by:0, dx:0, dy:0 };
+const joyR = { active:false, id:-1, bx:0, by:0, dx:0, dy:0 };
+const joyS = { active:false, id:-1, dx:0, dy:0 };
+let raf    = null;
+let prevT  = 0;
+
+let score  = 0;
+let kills  = 0;
+let bountyTime = 120;
+let gemCD  = 20;
+let gemCDtimer = 0;
+let gemSpawnTimer = 0;
+
+// 부활 시스템
+let respawnTimer = 0;   // 부활 대기 시간 (초)
+let isDead = false;      // 플레이어 사망 대기 중 여부
+
+// 특수 오브젝트
+let mines = [];          // 보 지뢰
+let damageBooster = null; // 8비트 데미지 부스터 { x, y, timer, team }
+let healTurret = null;    // 팸 치유 포탑 { x, y, hp, maxHp, team, healTimer }
+let sandyBuff = null;    // 샌디 은신 { timer }
+
+// 추가 모드 변수
+let heistHp = null;      // 하이스트: {ally, enemy} 금고 체력
+let siegeTimer = 0;      // 시즈: 남은 시간
+let siegeBolts = null;   // 시즈: {ally, enemy} 볼트 수
+let siegeBot = null;     // 시즈: 현재 로봇
+let brawlBall = null;    // 브롤볼: {x,y,vx,vy,holder}
+
+// 보스전
+let bossEnt = null;          // 보스 엔티티
+let bossPhase = 1;           // 보스 페이즈 1~3
+let bossWave = 1;            // 현재 보스 웨이브 (1~5)
+let bossWaveClearing = false;// 웨이브 전환 연출 중
+let bossAttackTimer = 0;     // 기본 공격 타이머
+let bossShockwaveTimer = 0;  // 충격파 타이머
+let bossMinionTimer = 0;     // 부하 소환 타이머
+let bossLobTimer = 0;        // 벽 너머 로브 공격 타이머
+let bossLobWarning = null;   // 로브 경고 표시 { x, y, timer }
+
+const BOSS_WAVES = [
+  { name:'다크 킹',    ico:'👹', color:'#8b0000', hp:80000,  spd:1.8, dmg:1200, fireRate:1.5 },
+  { name:'해골 군주',  ico:'💀', color:'#37474f', hp:130000, spd:2.2, dmg:1600, fireRate:1.2 },
+  { name:'화염 군주',  ico:'🔥', color:'#e65100', hp:190000, spd:2.6, dmg:2000, fireRate:0.9 },
+  { name:'번개 황제',  ico:'⚡', color:'#1a237e', hp:260000, spd:3.1, dmg:2500, fireRate:0.7 },
+  { name:'최종 악마',  ico:'😈', color:'#4a0080', hp:350000, spd:3.6, dmg:3200, fireRate:0.5 },
+];
+
+// ────────────────────────────────────────────────────────────
+// 맵 생성
+// ────────────────────────────────────────────────────────────
+// selMap: 현재 선택된 맵 이름
+let selMap = 'default';
+
+const MAP_LAYOUTS = {
+  // ── 젬그랩 맵들 ──
+  gemgrab_default: {
+    wall:[[6,2],[7,2],[12,2],[13,2],[6,12],[7,12],[12,12],[13,12],
+          [4,5],[4,6],[4,7],[4,8],[4,9],[15,5],[15,6],[15,7],[15,8],[15,9],
+          [8,5],[9,5],[10,5],[11,5],[8,9],[9,9],[10,9],[11,9],[9,7],[10,7]],
+    bush:[[6,5],[13,5],[6,9],[13,9],[5,7],[14,7]]
+  },
+  gemgrab_tunnel: {
+    wall:[[3,1],[4,1],[5,1],[14,1],[15,1],[16,1],
+          [3,13],[4,13],[5,13],[14,13],[15,13],[16,13],
+          [1,4],[1,5],[1,6],[1,8],[1,9],[1,10],[18,4],[18,5],[18,6],[18,8],[18,9],[18,10],
+          [5,4],[6,4],[7,4],[12,4],[13,4],[14,4],
+          [5,10],[6,10],[7,10],[12,10],[13,10],[14,10],
+          [9,6],[10,6],[9,8],[10,8]],
+    bush:[[3,6],[3,7],[3,8],[16,6],[16,7],[16,8],[9,3],[10,3],[9,11],[10,11]]
+  },
+  gemgrab_canyon: {
+    wall:[[2,3],[3,3],[4,3],[2,4],[2,5],[15,3],[16,3],[17,3],[17,4],[17,5],
+          [2,9],[2,10],[2,11],[3,11],[4,11],[15,11],[16,11],[17,11],[17,9],[17,10],
+          [7,1],[8,1],[11,1],[12,1],[7,13],[8,13],[11,13],[12,13],
+          [6,5],[7,5],[6,6],[12,5],[13,5],[13,6],
+          [6,8],[7,9],[6,9],[12,8],[13,8],[12,9],
+          [9,6],[10,6],[9,8],[10,8]],
+    bush:[[4,6],[4,7],[4,8],[15,6],[15,7],[15,8],[9,2],[10,2],[9,12],[10,12],[5,4],[14,4]]
+  },
+  // ── 바운티 맵들 ──
+  bounty_default: {
+    wall:[[5,3],[6,3],[13,3],[14,3],[5,11],[6,11],[13,11],[14,11],
+          [9,1],[10,1],[9,13],[10,13],
+          [4,6],[4,7],[4,8],[15,6],[15,7],[15,8],
+          [8,6],[8,7],[8,8],[11,6],[11,7],[11,8]],
+    bush:[[7,3],[12,3],[7,11],[12,11],[9,5],[10,5],[9,9],[10,9]]
+  },
+  bounty_longrange: {
+    wall:[[1,5],[1,6],[1,7],[1,8],[1,9],[18,5],[18,6],[18,7],[18,8],[18,9],
+          [5,2],[6,2],[7,2],[12,2],[13,2],[14,2],
+          [5,12],[6,12],[7,12],[12,12],[13,12],[14,12],
+          [8,4],[9,4],[10,4],[11,4],[8,10],[9,10],[10,10],[11,10],
+          [9,7],[10,7]],
+    bush:[[3,4],[4,4],[3,10],[4,10],[15,4],[16,4],[15,10],[16,10],[6,7],[13,7]]
+  },
+  bounty_maze: {
+    wall:[[3,2],[4,2],[5,2],[3,3],[3,4],[14,2],[15,2],[16,2],[16,3],[16,4],
+          [3,10],[3,11],[4,12],[5,12],[14,12],[15,12],[16,10],[16,11],[16,12],
+          [6,4],[7,4],[8,4],[7,5],[11,4],[12,4],[13,4],[12,5],
+          [6,10],[7,10],[8,10],[7,9],[11,10],[12,10],[13,10],[12,9],
+          [9,6],[10,6],[9,7],[10,7],[9,8],[10,8]],
+    bush:[[5,6],[5,7],[5,8],[14,6],[14,7],[14,8],[9,2],[10,2],[9,12],[10,12]]
+  },
+  // ── 솔로 맵들 ──
+  solo_default: {
+    wall:[[6,2],[7,2],[6,3],[7,3],[12,2],[13,2],[12,3],[13,3],
+          [6,11],[7,11],[6,12],[7,12],[12,11],[13,11],[12,12],[13,12],
+          [9,1],[10,1],[9,13],[10,13],
+          [4,6],[4,7],[4,8],[15,6],[15,7],[15,8],
+          [8,5],[8,6],[11,5],[11,6],[8,8],[8,9],[11,8],[11,9],[9,7],[10,7]],
+    bush:[[4,5],[15,5],[4,9],[15,9],[6,7],[13,7],[9,4],[10,4],[9,10],[10,10]]
+  },
+  solo_arena: {
+    wall:[[1,1],[2,1],[3,1],[16,1],[17,1],[18,1],
+          [1,13],[2,13],[3,13],[16,13],[17,13],[18,13],
+          [1,2],[1,3],[18,2],[18,3],[1,11],[1,12],[18,11],[18,12],
+          [5,4],[6,4],[5,5],[13,4],[14,4],[14,5],
+          [5,9],[6,9],[5,10],[13,9],[14,9],[14,10],
+          [9,3],[10,3],[9,11],[10,11],
+          [3,7],[4,7],[15,7],[16,7],
+          [8,6],[9,6],[10,6],[11,6],[8,8],[9,8],[10,8],[11,8]],
+    bush:[[7,4],[7,5],[12,4],[12,5],[7,9],[7,10],[12,9],[12,10],[6,7],[13,7]]
+  },
+  solo_labyrinth: {
+    wall:[[2,2],[3,2],[4,2],[2,3],[2,4],[2,5],[15,2],[16,2],[17,2],[17,3],[17,4],[17,5],
+          [2,9],[2,10],[2,11],[2,12],[3,12],[4,12],[15,12],[16,12],[17,12],[17,9],[17,10],[17,11],
+          [5,2],[5,3],[5,4],[14,2],[14,3],[14,4],
+          [5,10],[5,11],[5,12],[14,10],[14,11],[14,12],
+          [7,4],[8,4],[9,4],[10,4],[11,4],[12,4],
+          [7,10],[8,10],[9,10],[10,10],[11,10],[12,10],
+          [4,6],[4,7],[4,8],[15,6],[15,7],[15,8],
+          [7,6],[8,6],[7,7],[11,7],[12,7],[12,8],
+          [9,5],[10,5],[9,9],[10,9]],
+    bush:[[6,6],[6,7],[6,8],[13,6],[13,7],[13,8],[9,7],[10,7]]
+  },
+  // ── 보스전 맵 ──
+  boss_arena: {
+    wall:[[4,3],[5,3],[4,4],[5,4],
+          [14,3],[15,3],[14,4],[15,4],
+          [4,10],[5,10],[4,11],[5,11],
+          [14,10],[15,10],[14,11],[15,11],
+          [2,6],[2,7],[2,8],
+          [17,6],[17,7],[17,8],
+          [8,1],[9,1],[10,1],[11,1],
+          [8,13],[9,13],[10,13],[11,13],
+          [9,5],[10,5],[9,9],[10,9]],
+    bush:[]
+  },
+};
+
+function makeMap(mode, mapName) {
+  const m = Array.from({length:MY}, () => new Array(MX).fill(T.EMPTY));
+  // 외곽 벽
+  for (let x=0;x<MX;x++) { m[0][x]=T.WALL; m[MY-1][x]=T.WALL; }
+  for (let y=0;y<MY;y++) { m[y][0]=T.WALL; m[y][MX-1]=T.WALL; }
+
+  const wall = (arr) => arr.forEach(([x,y]) => { if(y>=0&&y<MY&&x>=0&&x<MX) m[y][x]=T.WALL; });
+  const bush = (arr) => arr.forEach(([x,y]) => { if(y>=0&&y<MY&&x>=0&&x<MX) m[y][x]=T.BUSH; });
+
+  // 맵 이름 결정
+  let layoutKey;
+  if (mapName && MAP_LAYOUTS[mapName]) {
+    layoutKey = mapName;
+  } else {
+    // 기본 맵
+    if (mode === 'gemgrab') layoutKey = 'gemgrab_default';
+    else if (mode === 'bounty') layoutKey = 'bounty_default';
+    else if (mode === 'boss') layoutKey = 'boss_arena';
+    else layoutKey = 'solo_default';
+  }
+
+  const layout = MAP_LAYOUTS[layoutKey];
+  if (layout.wall) wall(layout.wall);
+  if (layout.bush) bush(layout.bush);
+  return m;
+}
+
+// ────────────────────────────────────────────────────────────
+// 유틸
+// ────────────────────────────────────────────────────────────
+function tileAt(x, y) {
+  const tx = x/TS|0, ty = y/TS|0;
+  if (tx<0||tx>=MX||ty<0||ty>=MY) return T.WALL;
+  return map[ty][tx];
+}
+function solid(x, y) {
+  return tileAt(x, y) === T.WALL;
+}
+
+function safeSpawn(side) {
+  // side: 'left'(x<7), 'right'(x>12), 'any'
+  const R = 10;
+  for (let attempt=0; attempt<300; attempt++) {
+    let tx, ty;
+    // 부활 위치는 맵 가장자리 베이스 영역에 고정
+    if (side==='left')  { tx=1+Math.random()*3|0; ty=1+Math.random()*(MY-2)|0; }
+    else if (side==='right') { tx=(MX-4)+Math.random()*3|0; ty=1+Math.random()*(MY-2)|0; }
+    else { tx=1+Math.random()*(MX-2)|0; ty=1+Math.random()*(MY-2)|0; }
+    // 주변 타일도 안전한지 체크 (끼임 방지)
+    if (map[ty][tx]===T.EMPTY &&
+        map[ty][tx+1]!==T.WALL && map[ty][tx-1]!==T.WALL &&
+        map[ty+1] && map[ty+1][tx]!==T.WALL && map[ty-1] && map[ty-1][tx]!==T.WALL) {
+      const px = tx*TS+TS/2, py = ty*TS+TS/2;
+      // 픽셀 수준 충돌 최종 확인
+      if (!solid(px-R,py-R) && !solid(px+R,py-R) &&
+          !solid(px-R,py+R) && !solid(px+R,py+R)) {
+        return { x: px, y: py };
+      }
+    }
+  }
+  // 최후 수단: 안전한 빈 타일 스캔
+  for (let ty=2; ty<MY-2; ty++) {
+    for (let tx=2; tx<MX-2; tx++) {
+      if (map[ty][tx]===T.EMPTY) {
+        const px = tx*TS+TS/2, py = ty*TS+TS/2;
+        if (!solid(px-R,py-R) && !solid(px+R,py-R) &&
+            !solid(px-R,py+R) && !solid(px+R,py+R)) {
+          return { x: px, y: py };
+        }
+      }
+    }
+  }
+  return { x: 2*TS+TS/2, y: 2*TS+TS/2 };
+}
+
+function moveEntity(ent, dx, dy) {
+  const R = 10; // 충돌 반경 축소 (12→10, 벽 끼임 방지)
+  // X 이동: 4코너 + 좌우 중앙점 체크
+  const nx = ent.x + dx;
+  if (!solid(nx-R, ent.y-R) && !solid(nx+R, ent.y-R) &&
+      !solid(nx-R, ent.y+R) && !solid(nx+R, ent.y+R) &&
+      !solid(nx-R, ent.y)   && !solid(nx+R, ent.y)) {
+    ent.x = Math.max(R, Math.min(MX*TS-R, nx));
+  }
+  // Y 이동: 4코너 + 상하 중앙점 체크
+  const ny = ent.y + dy;
+  if (!solid(ent.x-R, ny-R) && !solid(ent.x+R, ny-R) &&
+      !solid(ent.x-R, ny+R) && !solid(ent.x+R, ny+R) &&
+      !solid(ent.x, ny-R)   && !solid(ent.x, ny+R)) {
+    ent.y = Math.max(R, Math.min(MY*TS-R, ny));
+  }
+}
+
+// 엔티티가 벽에 끼었을 때 가장 가까운 빈 공간으로 밀어냄
+function unstuck(ent) {
+  const R = 10;
+  // 4방향 + 8방향으로 밀기 시도
+  const dirs = [
+    [1,0],[-1,0],[0,1],[0,-1],
+    [1,1],[-1,1],[1,-1],[-1,-1]
+  ];
+  for (let dist = 1; dist <= 6; dist++) {
+    for (const [dx,dy] of dirs) {
+      const tx = ent.x + dx*dist*4;
+      const ty = ent.y + dy*dist*4;
+      if (!solid(tx-R,ty-R) && !solid(tx+R,ty-R) &&
+          !solid(tx-R,ty+R) && !solid(tx+R,ty+R)) {
+        ent.x = tx; ent.y = ty;
+        return;
+      }
+    }
+  }
+}
+
+// ────────────────────────────────────────────────────────────
+// 파티클
+// ────────────────────────────────────────────────────────────
+function spawnParts(x, y, color, n=8) {
+  for (let i=0;i<n;i++) {
+    const a=Math.random()*Math.PI*2, s=1+Math.random()*3;
+    particles.push({ x, y, vx:Math.cos(a)*s, vy:Math.sin(a)*s, life:1, r:3+Math.random()*3, color });
+  }
+}
+
+// ────────────────────────────────────────────────────────────
+// 엔티티 생성
+// ────────────────────────────────────────────────────────────
+function makeEntity(x, y, defKey, team) {
+  const d = DEFS[defKey];
+  return {
+    x, y, defKey,
+    d, team,
+    hp: d.hp, maxHp: d.hp,
+    angle: 0,
+    reloadTimer: 0,
+    superCharge: 0, superReady: false,
+    alive: true,
+    flash: 0,
+    walk: 0,
+    inBush: false,
+    gems: 0,
+    regenTimer: 0,  // 마지막 피격 이후 경과 시간
+    botRespawnTimer: 0, // 봇 부활 대기 시간
+    botRespawnCount: 0, // 부활 횟수 (최대 1회)
+    // AI 전용
+    aiAngle: Math.random()*Math.PI*2,
+    aiTimer: Math.random()*120,
+    aiShootTimer: 40 + Math.random()*80,
+    ammo: 3,
+    ammoTimer: 0,
+    totalDamage: 0,
+    totalHealing: 0,
+    invincTimer: 0,
+  };
+}
+
+// ────────────────────────────────────────────────────────────
+// 총알 생성
+// ────────────────────────────────────────────────────────────
+function makeBullet(x, y, vx, vy, dmg, owner, color, type='normal', radius=5) {
+  return { x, y, vx, vy, dmg, owner, color, type, r:radius,
+           alive:true, life:120, lobLife:0, lobMax:0, lobRadius:50 };
+}
+
+function shootBullets(ent, tx, ty, isSuper=false) {
+  const d = ent.d;
+  const angle = Math.atan2(ty - ent.y, tx - ent.x);
+  const owner = ent.team;
+  const out = [];
+  // 나중에 슈퍼 충전에 쓸 발사체 엔티티 참조 (봇용)
+  const _shooterRef = ent;
+
+  if (d.atk === 'shotgun') {
+    const pellets = isSuper ? (d.pellets||4)*2 : (d.pellets||4);
+    for (let i=0;i<pellets;i++) {
+      const a = angle + (Math.random()-.5)*(d.spread||0.4);
+      const spd = 6;
+      const b = makeBullet(ent.x, ent.y, Math.cos(a)*spd, Math.sin(a)*spd,
+        isSuper ? d.dmg*1.5 : d.dmg, owner, d.color, 'normal', 4);
+      b.life = isSuper ? d.range/spd*1.5 : d.range/spd;
+      out.push(b);
+    }
+  } else if (d.atk === 'bullet') {
+    const spd = 8;
+    const a = angle + (Math.random()-.5)*0.06;
+    const b = makeBullet(ent.x, ent.y, Math.cos(a)*spd, Math.sin(a)*spd,
+      isSuper ? d.dmg*2 : d.dmg, owner, d.color, 'normal', 5);
+    b.life = d.range/spd;
+    out.push(b);
+  } else if (d.atk === 'melee') {
+    // 근접: 히트박스를 공격 방향 앞에 배치 — 범위(range)를 실제로 활용
+    const reach = d.range || 80;
+    // 켄지 콤보: 찌르기(찌르기Ready) → 휘두르기
+    if (ent.defKey === 'kenji' && !isSuper) {
+      if (kenjiThrustReady) {
+        // 찌르기: 앞으로 조금 전진하면서 좁고 깊은 단일 히트박스, 높은 데미지
+        kenjiThrustReady = false;
+        const slideSpd = 7, slideFrames = 14;
+        kenjiSlideState = { vx: Math.cos(angle)*slideSpd, vy: Math.sin(angle)*slideSpd, timer: slideFrames, maxTimer: slideFrames };
+        const hx = ent.x + Math.cos(angle)*reach*0.8;
+        const hy = ent.y + Math.sin(angle)*reach*0.8;
+        let blocked = false;
+        const steps = Math.ceil(Math.hypot(hx-ent.x,hy-ent.y)/(TS*0.35));
+        for (let ms=1;ms<=steps;ms++) { const t=ms/steps; if(solid(ent.x+(hx-ent.x)*t,ent.y+(hy-ent.y)*t)){blocked=true;break;} }
+        if (!blocked) { const b=makeBullet(hx,hy,0,0,Math.round(d.dmg*1.4),owner,d.color,'melee',16); b.life=3; out.push(b); }
+      } else {
+        // 휘두르기: 넓은 3방향 히트박스
+        for (let i=-1;i<=1;i++) {
+          const a2 = angle + i*0.5;
+          const hx = ent.x + Math.cos(a2)*reach*0.5;
+          const hy = ent.y + Math.sin(a2)*reach*0.5;
+          let blocked = false;
+          const steps = Math.ceil(Math.hypot(hx-ent.x,hy-ent.y)/(TS*0.35));
+          for (let ms=1;ms<=steps;ms++) { const t=ms/steps; if(solid(ent.x+(hx-ent.x)*t,ent.y+(hy-ent.y)*t)){blocked=true;break;} }
+          if (!blocked) { const b=makeBullet(hx,hy,0,0,d.dmg,owner,d.color,'melee',32); b.life=3; out.push(b); }
+        }
+      }
+    } else {
+      const r = isSuper ? 38 : 28;
+      const hx = ent.x + Math.cos(angle)*reach*0.55;
+      const hy = ent.y + Math.sin(angle)*reach*0.55;
+      let meleeBlocked = false;
+      const meleeSteps = Math.ceil(Math.hypot(hx-ent.x, hy-ent.y) / (TS*0.35));
+      for (let ms = 1; ms <= meleeSteps; ms++) {
+        const t = ms / meleeSteps;
+        if (solid(ent.x + (hx-ent.x)*t, ent.y + (hy-ent.y)*t)) { meleeBlocked = true; break; }
+      }
+      if (!meleeBlocked) {
+        const b = makeBullet(hx, hy, 0, 0,
+          isSuper ? d.dmg*2 : d.dmg, owner, d.color, 'melee', r);
+        b.life = 3;
+        out.push(b);
+      }
+    }
+  } else if (d.atk === 'lob') {
+    const bottles = isSuper ? 5 : 1;
+    for (let i=0;i<bottles;i++) {
+      const a2 = angle + (i - Math.floor(bottles/2))*0.25;
+      const dist = Math.max(60, Math.hypot(tx-ent.x, ty-ent.y)); // 최소 60px 보장 (dist=0 방지)
+      const ttime = Math.max(20, Math.min(60, dist/7));
+      const spd = dist/ttime;
+      const b = makeBullet(ent.x, ent.y, Math.cos(a2)*spd, Math.sin(a2)*spd,
+        d.dmg, owner, '#ff8c00', 'lob', 7);
+      b.life = 0;
+      b.lobLife = ttime;
+      b.lobMax  = ttime;
+      b.lobRadius = TS*1.5;
+      out.push(b);
+    }
+  } else if (d.atk === 'sniper') {
+    const spd = 14;
+    const a = angle;
+    const b = makeBullet(ent.x, ent.y, Math.cos(a)*spd, Math.sin(a)*spd,
+      isSuper ? d.dmg*2.5 : d.dmg, owner, '#ff69b4', 'sniper', 5);
+    b.life = d.range/spd;
+    out.push(b);
+  } else if (d.atk === 'spike') {
+    // 스파이크: 중앙 + 주변 가시 방사
+    const pellets = isSuper ? 8 : 4;
+    const spd = 5;
+    for (let i = 0; i < pellets; i++) {
+      const a = angle + (i - (pellets-1)/2) * 0.22;
+      const b = makeBullet(ent.x, ent.y, Math.cos(a)*spd, Math.sin(a)*spd,
+        isSuper ? d.dmg*1.4 : d.dmg, owner, '#66bb6a', 'spike', 6);
+      b.life = d.range/spd;
+      out.push(b);
+    }
+  } else if (d.atk === 'triple') {
+    // 3방향 동시 발사
+    const offsets = isSuper ? [-0.3, -0.15, 0, 0.15, 0.3] : [-0.22, 0, 0.22];
+    const spd = 7;
+    for (const off of offsets) {
+      const a = angle + off;
+      const b = makeBullet(ent.x, ent.y, Math.cos(a)*spd, Math.sin(a)*spd,
+        isSuper ? d.dmg*1.3 : d.dmg, owner, d.color, 'normal', 5);
+      b.life = d.range/spd;
+      if (ent.defKey === 'crow') b.poison = true; // 크로우 독 플래그
+      out.push(b);
+    }
+  } else if (d.atk === 'arrow') {
+    // 보: 1발 화살 (5연사 시간차는 호출부에서 처리)
+    const spd = 7;
+    const b = makeBullet(ent.x, ent.y,
+      Math.cos(angle)*spd, Math.sin(angle)*spd,
+      d.dmg, owner, d.color || '#76c442', 'arrow', 5);
+    b.life = d.range/spd;
+    out.push(b);
+  } else if (d.atk === 'sirius') {
+    // 직선 탄환 + 로브 동시 발사
+    const spd = 9;
+    const a1 = angle + (Math.random()-0.5)*0.06;
+    const b1 = makeBullet(ent.x, ent.y, Math.cos(a1)*spd, Math.sin(a1)*spd,
+      isSuper ? d.dmg*2 : d.dmg, owner, d.color, 'normal', 6);
+    b1.life = d.range/spd;
+    out.push(b1);
+    const dist = Math.max(60, Math.hypot(tx - ent.x, ty - ent.y));
+    const ttime = Math.max(20, Math.min(70, dist/6));
+    const b2 = makeBullet(ent.x, ent.y, (tx-ent.x)/ttime, (ty-ent.y)/ttime,
+      isSuper ? Math.round(d.dmg*1.5) : Math.round(d.dmg*0.7), owner, d.color, 'lob', 9);
+    b2.life = 0; b2.lobLife = ttime; b2.lobMax = ttime; b2.lobRadius = TS*1.6;
+    out.push(b2);
+  } else if (d.atk === 'bounce') {
+    // 반사 탄환: 벽에 튕김
+    const cnt = isSuper ? 5 : 1;
+    const spd = 9;
+    for (let i = 0; i < cnt; i++) {
+      const a = angle + (i - (cnt-1)/2) * 0.1;
+      const b = makeBullet(ent.x, ent.y, Math.cos(a)*spd, Math.sin(a)*spd,
+        isSuper ? d.dmg*1.5 : d.dmg, owner, d.color, 'bounce', 5);
+      b.life = d.range/spd;
+      b.bounces = isSuper ? 5 : 3;
+      if (ent.defKey === 'rico' || ent.defKey === 'jessie') b.ricoShot = true;
+      out.push(b);
+    }
+  }
+
+  // 트로피 보너스 데미지 적용 (플레이어 전용)
+  if (ent === player && ent.dmgBonus) {
+    for (const b of out) b.dmg = Math.round(b.dmg * (1 + ent.dmgBonus));
+  }
+  // 8비트 데미지 부스터 적용 (부스터 범위 내에 있을 때만)
+  if (damageBooster) {
+    const isAllyEnt = ent === player || ent.team === 'ally';
+    const isAllyBooster = damageBooster.team === 'player' || damageBooster.team === 'ally';
+    if (isAllyEnt && isAllyBooster) {
+      const bdist = Math.hypot(ent.x - damageBooster.x, ent.y - damageBooster.y);
+      if (bdist < TS * 6) {
+        for (const b of out) b.dmg = Math.round(b.dmg * 1.5);
+      }
+    }
+  }
+
+  if (isSuper) {
+    ent.superCharge = 0;
+    ent.superReady  = false;
+    spawnParts(ent.x, ent.y, '#ffe100', 15);
+    for (const b of out) b.isSuper = true; // 슈퍼 총알 표시
+  }
+  for (const b of out) b.shooterRef = _shooterRef; // 발사체에 발사자 참조 저장
+  return out;
+}
+
+// ────────────────────────────────────────────────────────────
+// 데미지 처리
+// ────────────────────────────────────────────────────────────
+// 플레이어 슈퍼 충전 — 총알 1발 적중 시 호출
+// 실제 브롤스타즈 기준: 총알 N발 적중 = 슈퍼 100% 충전
+// chargePerBullet = 100 / (슈퍼 완충에 필요한 총알 수)
+function chargePlayerSuper(isFromSuper) {
+  if (!player) return;
+  if (isFromSuper) return; // 슈퍼 공격으로는 슈퍼 충전 안 됨
+  // 브롤러별 슈퍼 완충 필요 총알 수 (실제 브롤스타즈 참고)
+  // 산탄은 펠릿 1개당 충전 → 5발 산탄이면 20발치 적중해야 슈퍼
+  const bulletsNeeded = {
+    shelly:    14,  // 펠릿 14개 적중 (약 3번 공격 전탄 적중)
+    colt:      10,  // 10발 적중 (약 2번 공격)
+    elprimo:   6,   // 근접 6히트 (약 6번 공격)
+    barley:    5,   // 투척 5히트
+    piper:     4,   // 저격 4발
+    bull:      10,  // 펠릿 10개 (약 3번 공격)
+    edgar:     8,   // 근접 8히트
+    nita:      8,   // 8발
+    spike:     9,   // 가시 9개 적중
+    crow:      9,   // 단검 9개
+    mortis:    5,   // 근접 5히트
+    penny:     5,   // 투척 5히트
+    gene:      7,   // 7발
+    tara:      9,   // 카드 9개
+    frank:     5,   // 근접 5히트 (느린 대신 적음)
+    bo:        9,   // 화살 9개
+    rico:      10,  // 10발
+    jessie:    9,   // 9발
+    dynamike:  5,   // 투척 5히트
+    '8bit':    10,  // 10발
+    sandy:     9,   // 모래 9개
+    gon:        4,
+    leorio:     4,
+    kurapika:   5,
+    killua:     4,
+    hisoka:     4,
+    feitan:     5,
+    mystery:    3,
+    darkking:   6,
+    skullking:  6,
+    flamelord:  5,
+    lightning:  6,
+    finaldemon: 5,
+  }[player.defKey] ?? 10;
+  const charge = 100 / bulletsNeeded;
+  player.superCharge = Math.min(100, player.superCharge + charge);
+  if (player.superCharge >= 100) player.superReady = true;
+}
+
+function damage(ent, dmg, attacker=null, fromSuper=false) {
+  if (!ent.alive) return;
+  if (dmg <= 0) return;
+  if (ent.invincTimer > 0) return;
+  const actualDmg = Math.min(dmg, ent.hp);
+  ent.hp -= dmg;
+  ent.flash = 8;
+  ent.regenTimer = 0;
+  if (attacker && actualDmg > 0) attacker.totalDamage += actualDmg;
+  // 플레이어가 피격 시 소리
+  if (ent === player) SFX.hit();
+  // 공격자가 플레이어면 공격 시에도 슈퍼 충전 (슈퍼 공격 제외)
+  if (attacker === player) {
+    chargePlayerSuper(fromSuper);
+  }
+  // 공격자가 봇이면 봇 슈퍼 충전 (슈퍼 공격 제외)
+  if (attacker && attacker !== player && !fromSuper) {
+    const botHitsNeeded = 8;
+    attacker.superCharge = Math.min(100, (attacker.superCharge||0) + 100/botHitsNeeded);
+    if (attacker.superCharge >= 100) attacker.superReady = true;
+  }
+  if (ent.hp <= 0) {
+    ent.hp = 0;
+    ent.alive = false;
+    // 팀전 봇이면 죽는 순간 바로 부활 타이머 세팅 (솔로/녹아웃/바운티/보스 제외)
+    if (ent !== player && selMode !== 'solo' && selMode !== 'knockout' && selMode !== 'bounty' && selMode !== 'boss') {
+      ent.botRespawnTimer = 15; // 15초 후 부활
+    }
+    spawnParts(ent.x, ent.y, ent.d.color, 18);
+    // 젬그랩: 보석 소지 중 사망 시 낱개 드롭
+    if (selMode === 'gemgrab' && ent.gems > 0) {
+      for (let i = 0; i < ent.gems; i++) {
+        const a = Math.random() * Math.PI * 2;
+        const d = Math.random() * TS * 0.8;
+        gems.push({ x: ent.x + Math.cos(a)*d, y: ent.y + Math.sin(a)*d, alive: true, bob: Math.random()*Math.PI*2 });
+      }
+      ent.gems = 0;
+    }
+  }
+}
+
+// ────────────────────────────────────────────────────────────
+// 카메라
+// ────────────────────────────────────────────────────────────
+function updateCam() {
+  if (!player) return;
+  cam.x = Math.max(0, Math.min(MX*TS - W, player.x - W/2));
+  cam.y = Math.max(0, Math.min(MY*TS - H, player.y - H/2));
+}
+
+// ────────────────────────────────────────────────────────────
+// 맵 그리기
+// ────────────────────────────────────────────────────────────
+function drawMap() {
+  const x0 = cam.x/TS|0, x1 = Math.min(MX, x0 + W/TS + 2);
+  const y0 = cam.y/TS|0, y1 = Math.min(MY, y0 + H/TS + 2);
+  for (let ty=y0; ty<y1; ty++) {
+    for (let tx=x0; tx<x1; tx++) {
+      const sx = tx*TS - cam.x, sy = ty*TS - cam.y;
+      const t = map[ty][tx];
+      if (t === T.WALL) {
+        ctx.fillStyle = '#6b4c2a';
+        ctx.fillRect(sx, sy, TS, TS);
+        ctx.fillStyle = '#8b6332';
+        ctx.fillRect(sx+2, sy+2, TS-4, 5);
+        ctx.fillRect(sx+2, sy+TS-7, TS-4, 5);
+        ctx.fillStyle = '#5a3a1a';
+        ctx.fillRect(sx+2, sy+2, 5, TS-4);
+        ctx.fillRect(sx+TS-7, sy+2, 5, TS-4);
+      } else if (t === T.BUSH) {
+        ctx.fillStyle = '#2d6a1a';
+        ctx.fillRect(sx, sy, TS, TS);
+        ctx.font = '16px serif';
+        ctx.textAlign = 'center'; ctx.textBaseline = 'middle';
+        ctx.fillText('🌿', sx+TS/2, sy+TS/2);
+      } else {
+        ctx.fillStyle = '#4a7a2a';
+        ctx.fillRect(sx, sy, TS, TS);
+        ctx.fillStyle = 'rgba(0,0,0,0.07)';
+        ctx.fillRect(sx, sy, TS, 1);
+        ctx.fillRect(sx, sy, 1, TS);
+      }
+    }
+  }
+}
+
+// ────────────────────────────────────────────────────────────
+// 엔티티 그리기
+// ────────────────────────────────────────────────────────────
+function drawEnt(ent, isPlayer=false) {
+  // 팀전에서 부활 대기 중인 봇: 유령 표시 + 카운트다운
+  if (!ent.alive && !isPlayer && selMode !== 'solo' && ent.botRespawnTimer > 0) {
+    const sx = ent.x - cam.x;
+    const sy = ent.y - cam.y;
+    if (sx < -40 || sx > W+40 || sy < -40 || sy > H+40) return;
+    ctx.save();
+    ctx.globalAlpha = 0.35;
+    ctx.font = '22px serif';
+    ctx.textAlign = 'center'; ctx.textBaseline = 'middle';
+    ctx.fillText('💀', sx, sy);
+    ctx.globalAlpha = 1;
+    ctx.fillStyle = ent.team === 'enemy' ? '#ff6666' : '#66ff99';
+    ctx.font = 'bold 12px Arial';
+    ctx.fillText(`${Math.ceil(ent.botRespawnTimer)}s`, sx, sy+18);
+    ctx.restore();
+    return;
+  }
+  if (!ent.alive) return;
+  if (ent.inBush && !isPlayer) return;
+
+  const sx = ent.x - cam.x;
+  const sy = ent.y - cam.y;
+  if (sx < -40 || sx > W+40 || sy < -40 || sy > H+40) return;
+
+  // 샌디 은신: 플레이어/아군만 반투명 (적은 그대로)
+  const sandyStealth = sandyBuff && (isPlayer || ent.team === 'ally');
+  if (sandyStealth) ctx.globalAlpha = 0.35;
+
+  ent.walk = (ent.walk||0) + 0.12;
+  const bob = Math.sin(ent.walk)*2;
+
+  // 그림자
+  ctx.fillStyle = 'rgba(0,0,0,0.2)';
+  ctx.beginPath();
+  ctx.ellipse(sx, sy+16, 14, 5, 0, 0, Math.PI*2);
+  ctx.fill();
+
+  const R = 18 * (ent.d.scale || 1);
+
+  // 몸체
+  ctx.beginPath();
+  ctx.arc(sx, sy-bob, R, 0, Math.PI*2);
+  ctx.fillStyle = ent.flash > 0 ? '#fff' : ent.d.color;
+  ctx.fill();
+  ctx.strokeStyle = '#000';
+  ctx.lineWidth = 3;
+  ctx.stroke();
+
+  // 팀 링
+  ctx.beginPath();
+  ctx.arc(sx, sy-bob, R-4, 0, Math.PI*2);
+  ctx.strokeStyle = isPlayer ? '#00ff88' : (ent.team==='ally' ? '#44aaff' : '#ff4444');
+  ctx.lineWidth = 2;
+  ctx.stroke();
+
+  if (ent.flash > 0) ent.flash--;
+
+  // 이모지
+  ctx.font = `${R*1.1}px serif`;
+  ctx.textAlign = 'center'; ctx.textBaseline = 'middle';
+  ctx.fillText(ent.d.ico, sx, sy-bob);
+
+  // HP 바
+  const bw = 34, bh = 5;
+  const bx = sx-bw/2, by = sy-R-16-bob;
+  const ratio = ent.hp / ent.maxHp;
+  const isRegen = (ent.d.regen > 0) && (ent.regenTimer >= ent.d.regenDelay) && ent.hp < ent.maxHp;
+  ctx.fillStyle = 'rgba(0,0,0,0.55)';
+  ctx.fillRect(bx-1, by-1, bw+2, bh+2);
+  // 재생 중이면 HP바 테두리를 초록 빛으로 표시
+  if (isRegen) {
+    ctx.strokeStyle = `rgba(0,255,150,${0.5 + Math.sin(Date.now()*0.008)*0.5})`;
+    ctx.lineWidth = 1.5;
+    ctx.strokeRect(bx-1, by-1, bw+2, bh+2);
+  }
+  ctx.fillStyle = ratio>0.6 ? '#2ecc71' : ratio>0.3 ? '#f39c12' : '#e74c3c';
+  ctx.fillRect(bx, by, bw*ratio, bh);
+
+  // 이름 (플레이어 & 아군)
+  if (isPlayer || ent.team==='ally') {
+    ctx.fillStyle = '#fff';
+    ctx.font = 'bold 10px Arial';
+    ctx.textAlign = 'center'; ctx.textBaseline = 'bottom';
+    ctx.fillText(ent.d.name, sx, by-2);
+  }
+
+  // 플레이어 탄약 표시 (HP 바 바로 아래, 점 3개)
+  if (isPlayer) {
+    const maxAmmo = 3;
+    const dotR = 4;
+    const spacing = 11;
+    const totalW = (maxAmmo - 1) * spacing;
+    const dcy = by + bh + 6;
+    for (let i = 0; i < maxAmmo; i++) {
+      const dcx = sx - totalW/2 + i * spacing;
+      const filled = i < playerAmmo;
+      const isCharging = !filled && i === playerAmmo; // 현재 충전 중인 칸
+      // 빈 칸 배경
+      ctx.beginPath();
+      ctx.arc(dcx, dcy, dotR, 0, Math.PI*2);
+      ctx.fillStyle = '#222';
+      ctx.fill();
+      ctx.strokeStyle = '#666';
+      ctx.lineWidth = 1;
+      ctx.stroke();
+      // 충전 중 부분 채우기
+      if (isCharging && player && playerAmmoTimer > 0) {
+        const pct = playerAmmoTimer / player.d.reload;
+        ctx.beginPath();
+        ctx.moveTo(dcx, dcy);
+        ctx.arc(dcx, dcy, dotR, -Math.PI/2, -Math.PI/2 + pct*Math.PI*2);
+        ctx.closePath();
+        ctx.fillStyle = '#f5a623aa';
+        ctx.fill();
+      }
+      // 가득 찬 칸
+      if (filled) {
+        ctx.beginPath();
+        ctx.arc(dcx, dcy, dotR, 0, Math.PI*2);
+        ctx.fillStyle = '#f5a623';
+        ctx.fill();
+      }
+    }
+  }
+
+  // 보석
+  if (ent.gems > 0) {
+    ctx.fillStyle = '#00ff88';
+    ctx.font = '11px Arial';
+    ctx.textAlign = 'center'; ctx.textBaseline = 'top';
+    ctx.fillText('💎'+ent.gems, sx, sy+R+2);
+  }
+
+  if (sandyStealth) ctx.globalAlpha = 1;
+}
+
+// ────────────────────────────────────────────────────────────
+// 총알 그리기
+// ────────────────────────────────────────────────────────────
+function drawBullet(b) {
+  const sx = b.x - cam.x, sy = b.y - cam.y;
+  if (sx<-20||sx>W+20||sy<-20||sy>H+20) return;
+  ctx.save();
+  if (b.type === 'lob' && b.isBossLob) {
+    // 보스 미사일: 위에서 떨어지는 미사일
+    const prog = b.lobLife / b.lobMax; // 1→0 (1=발사 직후, 0=착탄)
+    const arc  = Math.sin(prog * Math.PI) * 80;
+    const scale = 0.6 + (1 - prog) * 0.8; // 가까울수록 커짐
+    const mx = sx, my = sy - arc;
+
+    // 착탄 그림자 (바닥) — 가까울수록 진해짐
+    ctx.globalAlpha = 0.15 + (1 - prog) * 0.45;
+    ctx.fillStyle = '#ff0000';
+    ctx.beginPath();
+    ctx.ellipse(sx, sy, b.r * 2.5 * scale, b.r * 0.7 * scale, 0, 0, Math.PI * 2);
+    ctx.fill();
+    ctx.globalAlpha = 1;
+
+    // 미사일 몸체 (수직 낙하 방향)
+    ctx.save();
+    ctx.translate(mx, my);
+    const travelAngle = Math.atan2(b.vy, b.vx);
+    const fallAngle = travelAngle + Math.PI * 0.5 + (prog - 0.5) * 0.8; // 이동 방향 + 포물선 기울기
+    ctx.rotate(fallAngle);
+    const ms = scale * 14;
+
+    // 화염 꼬리
+    const grad = ctx.createLinearGradient(0, -ms*2.5, 0, ms*0.5);
+    grad.addColorStop(0, 'rgba(255,80,0,0)');
+    grad.addColorStop(0.5, 'rgba(255,160,0,0.7)');
+    grad.addColorStop(1, 'rgba(255,220,50,0.9)');
+    ctx.fillStyle = grad;
+    ctx.beginPath();
+    ctx.moveTo(-ms*0.5, -ms*0.5);
+    ctx.lineTo(ms*0.5,  -ms*0.5);
+    ctx.lineTo(ms*0.2,  -ms*2.5);
+    ctx.lineTo(-ms*0.2, -ms*2.5);
+    ctx.closePath();
+    ctx.fill();
+
+    // 미사일 동체
+    ctx.fillStyle = '#cc2200';
+    ctx.shadowColor = '#ff4400'; ctx.shadowBlur = 12 * scale;
+    ctx.beginPath();
+    ctx.roundRect(-ms*0.5, -ms*0.5, ms, ms*2, ms*0.3);
+    ctx.fill();
+
+    // 탄두 (앞)
+    ctx.fillStyle = '#ff6600';
+    ctx.beginPath();
+    ctx.moveTo(-ms*0.5, ms*1.5);
+    ctx.lineTo(ms*0.5,  ms*1.5);
+    ctx.lineTo(0, ms*2.5);
+    ctx.closePath();
+    ctx.fill();
+
+    ctx.restore();
+  } else if (b.type === 'lob') {
+    // 투척: arc 효과
+    const prog = b.lobLife / b.lobMax;
+    const arc  = Math.sin(prog * Math.PI) * 35;
+    ctx.fillStyle = b.color || '#ff8c00';
+    ctx.beginPath();
+    ctx.arc(sx, sy - arc, b.r, 0, Math.PI*2);
+    ctx.fill();
+    // 그림자
+    ctx.globalAlpha = 0.25;
+    ctx.fillStyle = '#000';
+    ctx.beginPath();
+    ctx.ellipse(sx, sy, b.r*1.5, b.r*0.5, 0, 0, Math.PI*2);
+    ctx.fill();
+    ctx.globalAlpha = 1;
+  } else if (b.type === 'sniper') {
+    ctx.strokeStyle = b.color;
+    ctx.lineWidth = 3;
+    ctx.shadowColor = b.color; ctx.shadowBlur = 8;
+    ctx.beginPath();
+    ctx.moveTo(sx - b.vx*3, sy - b.vy*3);
+    ctx.lineTo(sx + b.vx*3, sy + b.vy*3);
+    ctx.stroke();
+  } else if (b.type === 'bounce' || b.type === 'spike') {
+    ctx.fillStyle = b.color;
+    ctx.shadowColor = b.color; ctx.shadowBlur = 8;
+    ctx.beginPath();
+    ctx.arc(sx, sy, b.r, 0, Math.PI*2);
+    ctx.fill();
+    ctx.strokeStyle = '#fff';
+    ctx.lineWidth = 1;
+    ctx.stroke();
+  } else if (b.type === 'arrow') {
+    // 화살: 방향에 맞춰 선 + 화살촉 (발사체 색상 사용)
+    const spd = Math.hypot(b.vx, b.vy) || 1;
+    const nx = b.vx/spd, ny = b.vy/spd;
+    const len = 14;
+    ctx.strokeStyle = b.color;
+    ctx.lineWidth = 3;
+    ctx.shadowColor = b.color; ctx.shadowBlur = 7;
+    ctx.lineCap = 'round';
+    ctx.beginPath();
+    ctx.moveTo(sx - nx*len, sy - ny*len);
+    ctx.lineTo(sx + nx*5,   sy + ny*5);
+    ctx.stroke();
+    ctx.fillStyle = b.color;
+    ctx.beginPath();
+    ctx.arc(sx + nx*5, sy + ny*5, 3, 0, Math.PI*2);
+    ctx.fill();
+  } else {
+    ctx.fillStyle = b.color;
+    ctx.shadowColor = b.color; ctx.shadowBlur = 5;
+    ctx.beginPath();
+    ctx.arc(sx, sy, b.r, 0, Math.PI*2);
+    ctx.fill();
+    // 트레일
+    ctx.globalAlpha = 0.3;
+    ctx.beginPath();
+    ctx.arc(sx - b.vx*2, sy - b.vy*2, b.r*0.7, 0, Math.PI*2);
+    ctx.fill();
+  }
+  ctx.restore();
+}
+
+// ────────────────────────────────────────────────────────────
+// 미니맵
+// ────────────────────────────────────────────────────────────
+function drawMinimap() {
+  const mw=100, mh=75, mx=W-110, my=45;
+  ctx.save();
+  ctx.globalAlpha=0.75;
+  ctx.fillStyle='#111'; ctx.fillRect(mx,my,mw,mh);
+  const sx=mw/MX, sy2=mh/MY;
+  for (let ty=0;ty<MY;ty++) for (let tx=0;tx<MX;tx++) {
+    if (map[ty][tx]===T.WALL) { ctx.fillStyle='#888'; ctx.fillRect(mx+tx*sx,my+ty*sy2,sx,sy2); }
+    else if (map[ty][tx]===T.BUSH) { ctx.fillStyle='#2a6a1a'; ctx.fillRect(mx+tx*sx,my+ty*sy2,sx,sy2); }
+  }
+  bots.forEach(b => {
+    if (!b.alive) return;
+    ctx.fillStyle = b.team==='ally' ? '#44aaff' : '#f44';
+    ctx.beginPath(); ctx.arc(mx+b.x*sx/TS, my+b.y*sy2/TS, 2, 0, Math.PI*2); ctx.fill();
+  });
+  if (player) {
+    ctx.fillStyle='#0f0';
+    ctx.beginPath(); ctx.arc(mx+player.x*sx/TS, my+player.y*sy2/TS, 3, 0, Math.PI*2); ctx.fill();
+  }
+  ctx.strokeStyle='#555'; ctx.lineWidth=1; ctx.strokeRect(mx,my,mw,mh);
+  ctx.restore();
+}
+
+// ────────────────────────────────────────────────────────────
+// HUD
+// ────────────────────────────────────────────────────────────
+function updateHUD() {
+  if (!player) return;
+  const r = player.hp/player.maxHp;
+  const trophyBonusStr = player.dmgBonus
+    ? `<br><span style="color:#f5a623;font-size:10px">🏆 +${Math.round(player.dmgBonus*100)}% HP·DMG</span>`
+    : '';
+  document.getElementById('hp').innerHTML =
+    `❤️ ${Math.ceil(player.hp)}/${player.maxHp}${trophyBonusStr}<br>` +
+    `<div style="width:120px;height:7px;background:#333;border-radius:4px;margin-top:2px">` +
+    `<div style="width:${r*100}%;height:100%;background:${r>.5?'#2ecc71':r>.25?'#f39c12':'#e74c3c'};border-radius:4px"></div></div>`;
+
+  document.getElementById('score').textContent = `⭐${score} 💀${kills}`;
+
+  // 일반공격 쿨타임 바
+  const sc = player.superCharge;
+  const scColor = player.superReady ? '#ffe100' : (sc >= 75 ? '#88ddff' : sc >= 50 ? '#4499ff' : '#fff');
+  const superDesc = player.d.superDesc || '⚡ 슈퍼';
+  document.getElementById('superbar').innerHTML =
+    `<div style="color:${scColor};font-size:${player.superReady?'14px':'12px'}">` +
+    `${player.superReady
+      ? `<span style="font-size:15px;animation:none">${superDesc} [E]</span>`
+      : `⚡ 슈퍼: <span style="font-size:15px;color:#88ddff">${sc|0}</span>/100 · <span style="color:#aaa;font-size:11px">${superDesc}</span>`}` +
+    `</div>` +
+    `<div style="width:180px;height:11px;background:#222;border-radius:6px;border:1px solid #555;margin:3px auto 0;overflow:hidden">` +
+    `<div style="width:${sc}%;height:100%;background:${player.superReady?'linear-gradient(90deg,#ffe100,#ffaa00)':'linear-gradient(90deg,#3498db,#88ddff)'};border-radius:6px;transition:width .1s;box-shadow:${player.superReady?'0 0 8px #ffe100':'none'}"></div></div>`;
+
+  // 모드 정보
+  let mi = '';
+  if (selMode==='solo') {
+    const alive = bots.filter(b=>b.alive && !b._tempBot).length;
+    mi = `💀 생존자: ${alive+1}명`;
+  } else if (selMode==='gemgrab') {
+    const total     = (player?player.gems:0) + bots.filter(b=>b.team==='ally').reduce((s,b)=>s+b.gems,0);
+    const enemyTot  = bots.filter(b=>b.team==='enemy').reduce((s,b)=>s+b.gems,0);
+    mi = `💎 아군: ${total}/10` + (total>=10 ? ` ⏱${gemCD|0}초` : '') +
+         `  ❌ 적: ${enemyTot}/10` + (enemyTot>=10 ? ` ⏱${(enemyGemCD||20)|0}초` : '');
+  } else if (selMode==='bounty') {
+    mi = `⭐ 킬: ${kills}  ⏱ ${bountyTime|0}초  적: ${bots.filter(b=>b.team==='enemy'&&b.alive).length}`;
+  } else if (selMode==='heist') {
+    const ah = heistHp?Math.max(0,heistHp.ally|0):20000;
+    const eh = heistHp?Math.max(0,heistHp.enemy|0):20000;
+    mi = `🏦 아군: ${ah}  적: ${eh}`;
+  } else if (selMode==='brawlball') {
+    mi = `⚽ 브롤볼 - 적 골대에 넣어라!`;
+  } else if (selMode==='siege') {
+    mi = `🤖 시즈 ⏱${siegeTimer|0}초  볼트: ${siegeBolts?siegeBolts.ally:0}/10`;
+  } else if (selMode==='knockout') {
+    mi = `🥊 녹아웃 ${koWins.ally}-${koWins.enemy} (2선승)`;
+  } else if (selMode==='boss') {
+    const w = BOSS_WAVES[bossWave - 1] || BOSS_WAVES[0];
+    const bHp = bossEnt && bossEnt.alive ? Math.ceil(bossEnt.hp) : 0;
+    const bMax = bossEnt ? bossEnt.maxHp : w.hp;
+    const phaseTxt = ['','★','★★','★★★'][bossPhase] || '';
+    const waveTxt = bossWaveClearing && bossWave < BOSS_WAVES.length ? '⏳ 다음 보스 소환 중...' : `웨이브 ${bossWave}/${BOSS_WAVES.length}`;
+    mi = `${w.ico} ${w.name} ${phaseTxt}  HP: ${bHp.toLocaleString()}/${bMax.toLocaleString()}  [${waveTxt}]  팀: ${bots.filter(b=>b.team==='ally'&&b.alive).length+1}명`;
+  }
+  document.getElementById('modeinfo').textContent = mi;
+}
+
+// ────────────────────────────────────────────────────────────
+// 총알 업데이트
+// ────────────────────────────────────────────────────────────
+function updateBullets(dt) {
+  // lob 타입은 폭발 처리
+  const nextBullets = [];
+  for (const b of bullets) {
+    if (!b.alive) continue;
+
+    if (b.type === 'lob') {
+      b.x += b.vx;
+      b.y += b.vy;
+      b.lobLife -= 60*dt;
+      if (b.lobLife <= 0) {
+        // 폭발
+        spawnParts(b.x, b.y, '#ff8000', 12);
+        SFX.lobExplode();
+        const targets = getTargets(b.owner);
+        const attacker = b.shooterRef || (b.owner==='player' ? player : null);
+        for (const t of targets) {
+          if (!t.alive) continue;
+          const dist = Math.hypot(t.x-b.x, t.y-b.y);
+          if (dist < b.lobRadius) {
+            damage(t, b.dmg * (1 - dist/b.lobRadius*0.5), attacker, b.isSuper);
+            checkKill(t, b.owner);
+          }
+        }
+        continue; // 제거
+      }
+      nextBullets.push(b);
+      continue;
+    }
+
+    // 일반 총알
+    b.x += b.vx;
+    b.y += b.vy;
+    b.life -= 60*dt;
+    if (b.life <= 0) continue;
+
+    // 벽 충돌: 경로 3분할 체크 + 대각선 코너 체크
+    const prevBX = b.x - b.vx, prevBY = b.y - b.vy;
+    const wallHit =
+      solid(prevBX + b.vx*0.33, prevBY + b.vy*0.33) ||  // 경로 1/3
+      solid(prevBX + b.vx*0.67, prevBY + b.vy*0.67) ||  // 경로 2/3
+      solid(b.x, b.y) ||                                  // 도착점
+      (solid(b.x, prevBY) && solid(prevBX, b.y));         // 대각선 두 벽 사이 통과
+    if (wallHit) {
+        if (b.type === 'bounce' && b.bounces > 0) {
+        // X축 반사 시도
+        const bkx = b.x - b.vx;
+        const bky = b.y - b.vy;
+        if (!solid(bkx, b.y)) { b.vx = -b.vx; b.x = bkx; }
+        else if (!solid(b.x, bky)) { b.vy = -b.vy; b.y = bky; }
+        else { b.vx = -b.vx; b.vy = -b.vy; b.x = bkx; b.y = bky; }
+        b.bounces--;
+        // 리코: 튕길수록 데미지 30% 증가
+        if (b.ricoShot) b.dmg = Math.round(b.dmg * 1.3);
+        spawnParts(b.x, b.y, b.color, 3);
+        SFX.wallBounce();
+        nextBullets.push(b);
+        continue;
+      }
+      spawnParts(b.x, b.y, '#888', 3);
+      continue;
+    }
+
+    // 엔티티 충돌
+    let hit = false;
+    const targets = getTargets(b.owner);
+    const attacker = b.shooterRef || (b.owner==='player' ? player : null);
+    for (const t of targets) {
+      if (!t.alive) continue;
+      const d = Math.hypot(t.x-b.x, t.y-b.y);
+      if (d < 20 + b.r) {
+        if (b.type === 'melee') {
+          if (!b.hitTargets) b.hitTargets = new Set();
+          if (b.hitTargets.has(t)) continue;
+          b.hitTargets.add(t);
+        }
+        damage(t, b.dmg, attacker, b.isSuper);
+        if (b.poison && t.defKey !== 'killua') {
+          if (!(t.poisonTimer > 0)) t.poisonTick = 0;
+          const addDur = b.poisonDuration ?? 5.0; // 보스 충격파는 3초 고정, 크로우는 5초 누적
+          t.poisonTimer = b.poisonDuration
+            ? addDur                              // 보스: 덮어쓰기 (3초)
+            : Math.min(15.0, (t.poisonTimer || 0) + addDur); // 크로우: 누적
+          t.poisonDmg   = Math.round(b.dmg * 0.5);
+          t.poisonOwner = b.owner;
+          spawnParts(b.x, b.y, '#7cb342', 5);
+        }
+        spawnParts(b.x, b.y, '#fff', 4);
+        if (!player || Math.hypot(b.x - player.x, b.y - player.y) < W * 0.6)
+          SFX.bulletImpact();
+        checkKill(t, b.owner);
+        if (b.type !== 'melee') { hit=true; break; }
+      }
+    }
+    // 8비트 부스터 피격 체크 (적 팀 총알만)
+    if (!hit && damageBooster) {
+      const isEnemyBullet = (damageBooster.team === 'player' || damageBooster.team === 'ally')
+        ? (b.owner !== 'player' && b.owner !== 'ally')
+        : (b.owner === 'player' || b.owner === 'ally');
+      if (isEnemyBullet) {
+        const bd = Math.hypot(b.x - damageBooster.x, b.y - damageBooster.y);
+        if (bd < TS * 0.8) {
+          damageBooster.hp -= b.dmg;
+          spawnParts(b.x, b.y, '#e53935', 4);
+          SFX.bulletImpact();
+          if (damageBooster.hp <= 0) {
+            spawnParts(damageBooster.x, damageBooster.y, '#e53935', 20);
+            damageBooster = null;
+          }
+          hit = true;
+        }
+      }
+    }
+    if (!hit && healTurret) {
+      const isEnemyBullet = (healTurret.team === 'player' || healTurret.team === 'ally')
+        ? (b.owner !== 'player' && b.owner !== 'ally')
+        : (b.owner === 'player' || b.owner === 'ally');
+      if (isEnemyBullet) {
+        const hd2 = Math.hypot(b.x - healTurret.x, b.y - healTurret.y);
+        if (hd2 < TS * 0.8) {
+          healTurret.hp -= b.dmg;
+          spawnParts(b.x, b.y, '#4caf50', 4);
+          SFX.bulletImpact();
+          if (healTurret.hp <= 0) {
+            spawnParts(healTurret.x, healTurret.y, '#4caf50', 20);
+            healTurret = null;
+          }
+          hit = true;
+        }
+      }
+    }
+    if (!hit) nextBullets.push(b);
+  }
+  bullets = nextBullets;
+}
+
+function getTargets(owner) {
+  const all = [player, ...bots].filter(t => t && t.alive);
+  if (owner === 'player') {
+    // 플레이어 총알 → 모든 적 봇
+    return all.filter(t => t !== player && t.team !== 'ally');
+  }
+  if (owner === 'ally') {
+    return all.filter(t => t.team === 'enemy' || t.team.startsWith('solo_'));
+  }
+  if (owner.startsWith('solo_')) {
+    // 솔로 봇 총알 → 자기 팀 제외 전부
+    return all.filter(t => t.team !== owner);
+  }
+  if (owner === 'enemy') {
+    // 팀전 적 총알 → 플레이어 + 아군
+    return all.filter(t => t === player || t.team === 'ally');
+  }
+  return [];
+}
+
+function checkKill(ent, bulletOwner) {
+  if (ent.alive) return;
+  if (ent === player) return; // 플레이어 사망은 게임루프에서 처리
+  const playerKilled = bulletOwner === 'player' || bulletOwner === 'ally';
+  if (playerKilled) {
+    kills++;
+    score += 3;
+    SFX.kill();
+  } else if (player && Math.hypot(ent.x - player.x, ent.y - player.y) < W * 0.6) {
+    // 플레이어 시야 근처에서 봇이 죽을 때만 소리
+    SFX.entityDeath();
+  }
+}
+
+// ────────────────────────────────────────────────────────────
+// AI 슈퍼 발동
+// ────────────────────────────────────────────────────────────
+function botActivateSuper(bot, target) {
+  const key = bot.defKey;
+  const ang = Math.atan2(target.y - bot.y, target.x - bot.x);
+  const tx = target.x, ty = target.y;
+
+  if (key === 'shelly') {
+    // 슈퍼 샷건 + 벽 파괴
+    breakWalls(bot.x, bot.y, ang, 4, 1.5);
+    for (let i = 0; i < 10; i++) {
+      const a = ang + (Math.random()-.5)*0.9;
+      const b = makeBullet(bot.x, bot.y, Math.cos(a)*6, Math.sin(a)*6,
+        560, bot.team, bot.d.color, 'normal', 5);
+      b.life = 55; bullets.push(b);
+    }
+    spawnParts(bot.x, bot.y, '#ff4444', 15);
+
+  } else if (key === 'colt') {
+    // 25발 연속 발사
+    for (let i = 0; i < 25; i++) {
+      setTimeout(() => {
+        if (!bot.alive) return;
+        const a = ang + (Math.random()-.5)*0.04;
+        const b = makeBullet(bot.x, bot.y, Math.cos(a)*12, Math.sin(a)*12,
+          480, bot.team, bot.d.color, 'normal', 5);
+        b.life = 55; bullets.push(b);
+      }, i * 80);
+    }
+    spawnParts(bot.x, bot.y, '#3498db', 10);
+
+  } else if (key === 'elprimo') {
+    // 타겟 위치로 돌진
+    const originX = bot.x, originY = bot.y;
+    let nx = Math.max(TS, Math.min(MX*TS-TS, tx));
+    let ny = Math.max(TS, Math.min(MY*TS-TS, ty));
+    if (solid(nx, ny)) { const sp = safeSpawn('any'); nx = sp.x; ny = sp.y; }
+    spawnParts(originX, originY, '#9b59b6', 15);
+    for (let step = 0; step <= 4; step++) {
+      spawnParts(originX+(nx-originX)*step/4, originY+(ny-originY)*step/4, '#ce93d8', 2);
+    }
+    bot.x = nx; bot.y = ny;
+    unstuck(bot);
+    breakWalls(bot.x, bot.y, ang, 3, 1.0);
+    // 착지 충격파
+    const botImpactRange = TS * 3;
+    const allT2 = getTargets(bot.team);
+    for (const t of allT2) {
+      if (!t.alive) continue;
+      const d = Math.hypot(t.x-bot.x, t.y-bot.y);
+      if (d < botImpactRange) { damage(t, 1200, null); checkKill(t, bot.team); }
+    }
+    // 하이스트: 착지 범위 내 금고에도 데미지
+    if (selMode === 'heist' && heistHp) {
+      const targetVault = bot.team === 'enemy' ? HEIST_ALLY_VAULT : HEIST_ENEMY_VAULT;
+      if (Math.hypot(bot.x - targetVault.x, bot.y - targetVault.y) < botImpactRange) {
+        if (bot.team === 'enemy') {
+          heistHp.ally -= 1200;
+          spawnParts(HEIST_ALLY_VAULT.x, HEIST_ALLY_VAULT.y, '#4444ff', 8);
+          if (heistHp.ally <= 0) { endGame(false); return; }
+        } else {
+          heistHp.enemy -= 1200;
+          spawnParts(HEIST_ENEMY_VAULT.x, HEIST_ENEMY_VAULT.y, '#ff4444', 8);
+          if (heistHp.enemy <= 0) { endGame(true); return; }
+        }
+      }
+    }
+    spawnParts(bot.x, bot.y, '#9b59b6', 20);
+
+  } else if (key === 'barley') {
+    // 타겟 방향으로 5발 투척
+    const dist2 = Math.max(80, Math.hypot(tx-bot.x, ty-bot.y));
+    for (let i = 0; i < 5; i++) {
+      const a = ang + (i-2)*0.28;
+      const ttime = Math.max(20, Math.min(70, dist2/7));
+      const spd = dist2/ttime;
+      const b = makeBullet(bot.x, bot.y, Math.cos(a)*spd, Math.sin(a)*spd,
+        700, bot.team, '#ff6600', 'lob', 11);
+      b.lobLife = ttime; b.lobMax = ttime; b.lobRadius = TS*3.0;
+      bullets.push(b);
+    }
+    spawnParts(bot.x, bot.y, '#ff6600', 12);
+
+  } else if (key === 'piper') {
+    // 타겟 반대 방향으로 점프 + 폭발
+    const jumpAng = ang + Math.PI;
+    const jumpDist = 200;
+    let jx = Math.max(TS, Math.min(MX*TS-TS, bot.x + Math.cos(jumpAng)*jumpDist));
+    let jy = Math.max(TS, Math.min(MY*TS-TS, bot.y + Math.sin(jumpAng)*jumpDist));
+    if (solid(jx, jy)) { const sp = safeSpawn('any'); jx = sp.x; jy = sp.y; }
+    const ex = bot.x, ey = bot.y;
+    bot.x = jx; bot.y = jy;
+    unstuck(bot);
+    spawnParts(ex, ey, '#e91e63', 20);
+    spawnParts(bot.x, bot.y, '#ffaacc', 10);
+    const allTP = getTargets(bot.team);
+    for (const t of allTP) {
+      if (!t.alive) continue;
+      const d = Math.hypot(t.x-ex, t.y-ey);
+      if (d < TS*3) { damage(t, 1400, null); checkKill(t, bot.team); }
+    }
+
+  } else if (key === 'bull') {
+    // 타겟 방향 돌진 + 벽 파괴 (시간차 이동)
+    breakWalls(bot.x, bot.y, ang, 7, 1.2);
+    const bullAng = ang;
+    const R = 10;
+    for (let step = 0; step < 12; step++) {
+      setTimeout(() => {
+        if (!bot.alive) return;
+        const nx2 = bot.x + Math.cos(bullAng)*14;
+        const ny2 = bot.y + Math.sin(bullAng)*14;
+        if (!solid(nx2-R,bot.y-R)&&!solid(nx2+R,bot.y-R)&&!solid(nx2-R,bot.y+R)&&!solid(nx2+R,bot.y+R))
+          bot.x = Math.max(R, Math.min(MX*TS-R, nx2));
+        if (!solid(bot.x-R,ny2-R)&&!solid(bot.x+R,ny2-R)&&!solid(bot.x-R,ny2+R)&&!solid(bot.x+R,ny2+R))
+          bot.y = Math.max(R, Math.min(MY*TS-R, ny2));
+        const allTB = getTargets(bot.team);
+        for (const t of allTB) {
+          if (!t.alive) continue;
+          if (Math.hypot(t.x-bot.x, t.y-bot.y) < 40) {
+            damage(t, 800, null); checkKill(t, bot.team);
+          }
+        }
+        spawnParts(bot.x, bot.y, '#795548', 2);
+      }, step * 40);
+    }
+
+  } else if (key === 'edgar') {
+    // 레츠플라이: 타겟 위치로 도약 + 체력 회복 + 근접 데미지
+    const originX = bot.x, originY = bot.y;
+    let nx = Math.max(TS, Math.min(MX*TS-TS, tx));
+    let ny = Math.max(TS, Math.min(MY*TS-TS, ty));
+    if (solid(nx, ny)) { const sp = safeSpawn('any'); nx = sp.x; ny = sp.y; }
+    spawnParts(originX, originY, '#7c4dff', 15);
+    for (let step = 0; step <= 4; step++) {
+      spawnParts(originX+(nx-originX)*step/4, originY+(ny-originY)*step/4, '#2c2c54', 2);
+    }
+    bot.x = nx; bot.y = ny;
+    unstuck(bot);
+    // 체력 회복 (최대체력의 30%)
+    { const h = Math.min(bot.maxHp - bot.hp, bot.maxHp * 0.30); bot.hp += h; bot.totalHealing += h; }
+    bot.regenTimer = 0;
+    // 착지 근접 데미지
+    const allTEd = getTargets(bot.team);
+    for (const t of allTEd) {
+      if (!t.alive) continue;
+      const d = Math.hypot(t.x-bot.x, t.y-bot.y);
+      if (d < TS*2.5) { damage(t, 1000 * (1 - d/(TS*2.5)*0.5), null); checkKill(t, bot.team); }
+    }
+    spawnParts(bot.x, bot.y, '#7c4dff', 20);
+
+  } else if (key === 'nita') {
+    const bx2 = tx + (Math.random()-0.5)*TS*2;
+    const by2 = ty + (Math.random()-0.5)*TS*2;
+    const bearEnt = makeEntity(bx2, by2, 'elprimo', bot.team);
+    bearEnt.hp = bearEnt.maxHp = 9000;
+    bearEnt.d = Object.assign({}, bearEnt.d, { ico:'🐻', color:'#8d6e63', name:'곰', spd:3.5, dmg:800 });
+    bearEnt._tempBot = true; bearEnt._tempLife = 10; bearEnt._noflee = true;
+    bots.push(bearEnt);
+    spawnParts(bx2, by2, '#8d6e63', 15);
+
+  } else if (key === 'spike') {
+    for (let i = 0; i < 8; i++) {
+      const a2 = (Math.PI*2/8)*i;
+      const b = makeBullet(bot.x, bot.y, Math.cos(a2)*5, Math.sin(a2)*5, 800, bot.team, '#66bb6a', 'spike', 8);
+      b.life = 70; bullets.push(b);
+    }
+    spawnParts(bot.x, bot.y, '#66bb6a', 20);
+
+  } else if (key === 'crow') {
+    const jumpDist = 250;
+    const fromBX = bot.x, fromBY = bot.y;
+    let jx = Math.max(TS, Math.min(MX*TS-TS, tx + (Math.random()-0.5)*60));
+    let jy = Math.max(TS, Math.min(MY*TS-TS, ty + (Math.random()-0.5)*60));
+    if (solid(jx, jy)) { const sp = safeSpawn('any'); jx=sp.x; jy=sp.y; }
+    spawnParts(fromBX, fromBY, '#1a237e', 12);
+    // 도약 중 8방향 독침
+    for (let i = 0; i < 8; i++) {
+      const a = (Math.PI * 2 / 8) * i;
+      const spd = 7;
+      const b = makeBullet(fromBX, fromBY, Math.cos(a)*spd, Math.sin(a)*spd,
+        bot.d.dmg * 1.5, bot.team, bot.d.color, 'normal', 5);
+      b.life = 220 / spd;
+      b.poison = true; b.isSuper = true;
+      bullets.push(b);
+    }
+    bot.x = jx; bot.y = jy; unstuck(bot);
+    // 착지 8방향 독침
+    for (let i = 0; i < 8; i++) {
+      const a = (Math.PI * 2 / 8) * i;
+      const spd = 7;
+      const b = makeBullet(bot.x, bot.y, Math.cos(a)*spd, Math.sin(a)*spd,
+        bot.d.dmg * 1.5, bot.team, bot.d.color, 'normal', 5);
+      b.life = 220 / spd;
+      b.poison = true; b.isSuper = true;
+      bullets.push(b);
+    }
+    spawnParts(bot.x, bot.y, '#5c6bc0', 12);
+
+  } else if (key === 'mortis') {
+    const mang = Math.atan2(ty-bot.y, tx-bot.x);
+    let mx2 = Math.max(TS, Math.min(MX*TS-TS, bot.x + Math.cos(mang)*160));
+    let my2 = Math.max(TS, Math.min(MY*TS-TS, bot.y + Math.sin(mang)*160));
+    if (solid(mx2, my2)) { const sp=safeSpawn('any'); mx2=sp.x; my2=sp.y; }
+    spawnParts(bot.x, bot.y, '#4a148c', 12);
+    bot.x = mx2; bot.y = my2; unstuck(bot);
+    const allTM = getTargets(bot.team);
+    let healed2 = 0;
+    for (const t of allTM) {
+      if (!t.alive) continue;
+      if (Math.hypot(t.x-bot.x, t.y-bot.y) < TS*3) {
+        damage(t, 1100, null); checkKill(t, bot.team);
+        healed2 += 1100*0.4;
+      }
+    }
+    { const h = Math.min(bot.maxHp - bot.hp, healed2); bot.hp += h; bot.totalHealing += h; }
+    spawnParts(bot.x, bot.y, '#e91e63', 15);
+
+  } else if (key === 'gene') {
+    const gTargets = getTargets(bot.team);
+    let pulled2 = null, pullD2 = Infinity;
+    for (const t of gTargets) {
+      if (!t.alive) continue;
+      const d6 = Math.hypot(t.x-bot.x, t.y-bot.y);
+      if (d6 < 500 && d6 < pullD2) { pullD2=d6; pulled2=t; }
+    }
+    if (pulled2) {
+      pulled2.x = bot.x + Math.cos(ang)*TS*1.5;
+      pulled2.y = bot.y + Math.sin(ang)*TS*1.5;
+      unstuck(pulled2);
+      damage(pulled2, 700, null); checkKill(pulled2, bot.team);
+      spawnParts(pulled2.x, pulled2.y, '#7b1fa2', 15);
+    }
+    spawnParts(bot.x, bot.y, '#ce93d8', 10);
+
+  } else if (key === 'tara') {
+    spawnParts(tx, ty, '#880e4f', 25);
+    const taraT = getTargets(bot.team);
+    for (const t of taraT) {
+      if (!t.alive) continue;
+      const d7 = Math.hypot(t.x-tx, t.y-ty);
+      if (d7 < TS*5) {
+        t.x = tx + (Math.random()-0.5)*TS; t.y = ty + (Math.random()-0.5)*TS;
+        unstuck(t); damage(t, 500+(1-d7/(TS*5))*700, null); checkKill(t, bot.team);
+      }
+    }
+
+  } else if (key === 'frank') {
+    for (let i=0; i<6; i++) {
+      const a3 = ang + (i-2.5)*0.25;
+      const b = makeBullet(bot.x, bot.y, Math.cos(a3)*4, Math.sin(a3)*4, 1100, bot.team, '#546e7a', 'melee', 35);
+      b.life = 22; bullets.push(b);
+    }
+    spawnParts(bot.x, bot.y, '#546e7a', 20);
+
+  } else if (key === 'bo') {
+    // 1발 투척 화살 (벽 넘음)
+    {
+      const dist6 = Math.max(80, Math.hypot(tx-bot.x, ty-bot.y));
+      const ttime = Math.max(25, Math.min(70, dist6/7));
+      const spd = dist6/ttime;
+      const b = makeBullet(bot.x, bot.y, Math.cos(ang)*spd, Math.sin(ang)*spd,
+        Math.round(bot.d.dmg * 2.5), bot.team, '#ffd54f', 'lob', 10);
+      b.life = 0; b.lobLife = ttime; b.lobMax = ttime; b.lobRadius = TS*1.6;
+      bullets.push(b);
+    }
+    spawnParts(bot.x, bot.y, '#ffd54f', 8);
+
+  } else if (key === 'rico') {
+    for (let i=0; i<15; i++) {
+      setTimeout(() => {
+        if (!bot.alive) return;
+        const a5 = ang + (Math.random()-0.5)*0.12;
+        const b = makeBullet(bot.x, bot.y, Math.cos(a5)*11, Math.sin(a5)*11, 800, bot.team, '#0097a7', 'bounce', 7);
+        b.life = 90; b.bounces = 5; b.ricoShot = true; bullets.push(b);
+      }, i*60);
+    }
+
+  } else if (key === 'dynamike') {
+    const dist6 = Math.max(80, Math.hypot(tx-bot.x, ty-bot.y));
+    const ttime3 = Math.max(20, Math.min(70, dist6/6));
+    const b = makeBullet(bot.x, bot.y, (tx-bot.x)/ttime3, (ty-bot.y)/ttime3, 1300, bot.team, '#ff6f00', 'lob', 18);
+    b.lobLife = ttime3; b.lobMax = ttime3; b.lobRadius = TS*4.5;
+    bullets.push(b);
+    spawnParts(bot.x, bot.y, '#ff6f00', 12);
+
+  } else if (key === 'penny') {
+    const turret3 = makeEntity(bot.x + Math.cos(ang)*60, bot.y + Math.sin(ang)*60, 'penny', bot.team);
+    turret3.hp = turret3.maxHp = 2500;
+    turret3.d = Object.assign({}, turret3.d, { ico:'💣', color:'#f57f17', name:'대포', spd:0, dmg:550, range:350, reload:1.5, atk:'lob' });
+    turret3._tempBot = true; turret3._tempLife = 8; turret3._turret = true;
+    bots.push(turret3);
+    spawnParts(turret3.x, turret3.y, '#f57f17', 12);
+
+  } else if (key === 'jessie') {
+    const turret4 = makeEntity(bot.x + Math.cos(ang)*60, bot.y + Math.sin(ang)*60, 'jessie', bot.team);
+    turret4.hp = turret4.maxHp = 2000;
+    turret4.d = Object.assign({}, turret4.d, { ico:'🤖', color:'#f9a825', name:'터렛', spd:0, dmg:380, range:300, reload:1.0, atk:'bounce' });
+    turret4._tempBot = true; turret4._tempLife = 10; turret4._turret = true;
+    bots.push(turret4);
+    spawnParts(turret4.x, turret4.y, '#f9a825', 12);
+
+  } else if (key === '8bit') {
+    // 데미지 부스터: 아군이면 타겟 근처에 포탑 설치, 적이면 자신 주변에 레이저 버스트
+    if (bot.team === 'ally') {
+      // 아군 봇이 가장 많이 모인 위치 근처에 설치
+      const allies = bots.filter(b => b.alive && (b.team === 'ally'));
+      const tx2 = allies.length ? allies.reduce((s,b)=>s+b.x,0)/allies.length : bot.x;
+      const ty2 = allies.length ? allies.reduce((s,b)=>s+b.y,0)/allies.length : bot.y;
+      damageBooster = { x: tx2, y: ty2, hp: 4000, maxHp: 4000, team: 'ally' };
+      spawnParts(tx2, ty2, '#e53935', 12);
+    } else {
+      for (let i = 0; i < 8; i++) {
+        const a8 = ang + (Math.random()-0.5)*0.15;
+        const b = makeBullet(bot.x, bot.y, Math.cos(a8)*9, Math.sin(a8)*9,
+          700, bot.team, '#e53935', 'normal', 5);
+        b.life = 60; bullets.push(b);
+      }
+    }
+    spawnParts(bot.x, bot.y, '#e53935', 20);
+
+  } else if (key === 'sandy') {
+    // 모래폭풍: 아군이면 팀 은신, 적이면 시각적 효과만
+    if (bot.team === 'ally') {
+      sandyBuff = { timer: 4 };
+    }
+    spawnParts(bot.x, bot.y, '#fdd835', 25);
+    for (let i = 0; i < 8; i++) {
+      const a9 = (Math.PI*2/8)*i;
+      spawnParts(bot.x + Math.cos(a9)*TS*2, bot.y + Math.sin(a9)*TS*2, '#fdd835', 3);
+    }
+
+  } else if (key === 'hisoka') {
+    // 🩷 번지검: 주변 전체 5000 고정 데미지
+    const hRadius = TS * 6;
+    spawnParts(bot.x, bot.y, '#7e57c2', 25);
+    const hTargets = getTargets(bot.team);
+    for (const t of hTargets) {
+      if (!t.alive) continue;
+      const hd = Math.hypot(t.x - bot.x, t.y - bot.y);
+      if (hd < hRadius) {
+        damage(t, 5000, bot, false);
+        checkKill(t, bot.team);
+        spawnParts(t.x, t.y, '#ce93d8', 6);
+      }
+    }
+
+  } else if (key === 'feitan') {
+    // 💊 치유 포탑: 아군 봇이면 아군 중심에 설치
+    if (bot.team === 'ally') {
+      const allies2 = bots.filter(b => b.alive && b.team === 'ally');
+      const ftx = allies2.length ? allies2.reduce((s,b)=>s+b.x,0)/allies2.length : bot.x;
+      const fty = allies2.length ? allies2.reduce((s,b)=>s+b.y,0)/allies2.length : bot.y;
+      healTurret = { x: ftx, y: fty, hp: 5000, maxHp: 5000, team: 'ally', healTimer: 0 };
+      spawnParts(ftx, fty, '#4caf50', 20);
+    }
+  }
+
+  bot.superCharge = 0;
+  bot.superReady = false;
+  spawnParts(bot.x, bot.y, '#ffe100', 10);
+}
+
+// ────────────────────────────────────────────────────────────
+// 시야선(Line of Sight) 체크 - 두 점 사이에 벽이 없으면 true
+// ────────────────────────────────────────────────────────────
+function hasLOS(x1, y1, x2, y2) {
+  const dx = x2 - x1, dy = y2 - y1;
+  const steps = Math.ceil(Math.hypot(dx, dy) / (TS * 0.4)); // 타일 0.4칸 간격으로 체크
+  if (steps === 0) return true;
+  for (let i = 1; i < steps; i++) {
+    const t = i / steps;
+    if (solid(x1 + dx*t, y1 + dy*t)) return false;
+  }
+  return true;
+}
+
+// ────────────────────────────────────────────────────────────
+// 체력 재생 업데이트
+// ────────────────────────────────────────────────────────────
+function updatePoison(dt) {
+  const allEnts = [player, ...bots].filter(e => e && e.alive && e.poisonTimer > 0 && e.defKey !== 'killua');
+  for (const ent of allEnts) {
+    ent.poisonTimer -= dt;
+    ent.poisonTick  -= dt;
+    if (ent.poisonTick <= 0) {
+      ent.poisonTick = 0.4; // 0.4초마다 틱
+      damage(ent, ent.poisonDmg, null, true);
+      spawnParts(ent.x, ent.y, '#7cb342', 4);
+      checkKill(ent, ent.poisonOwner || 'player');
+    }
+    if (ent.poisonTimer <= 0) ent.poisonTimer = 0;
+  }
+}
+
+function updateRegen(dt) {
+  const allEnts = [player, ...bots].filter(e => e && e.alive);
+  for (const ent of allEnts) {
+    if (ent.invincTimer > 0) ent.invincTimer = Math.max(0, ent.invincTimer - dt);
+    const isBot = ent !== player;
+    const regen = ent.d.regen || 0;
+    if (regen <= 0) continue;              // 재생 없는 캐릭터 스킵
+    if (ent.hp >= ent.maxHp) continue;    // 이미 풀체력
+    ent.regenTimer += dt;
+    const delay = ent.d.regenDelay || 3.0;
+    if (ent.regenTimer >= delay) {
+      {
+        const h = Math.min(ent.maxHp - ent.hp, regen * dt);
+        ent.hp += h;
+        ent.totalHealing += h;
+      }
+    }
+  }
+}
+
+// ────────────────────────────────────────────────────────────
+// bounce 봇: 벽 반사 조준 계산
+// 목표가 직선으로 안 닿을 때, 1회 벽 반사 경로를 찾아 가상 조준점 반환
+function calcBounceAimTarget(bx, by, tx, ty) {
+  const STEP = TS * 0.6;
+  const MAX  = 560;
+  let bestTx = tx, bestTy = ty;
+  let bestScore = -1;
+
+  const dirs = [
+    { dx:-1, dy: 0 }, // 왼쪽 벽
+    { dx: 1, dy: 0 }, // 오른쪽 벽
+    { dx: 0, dy:-1 }, // 위 벽
+    { dx: 0, dy: 1 }, // 아래 벽
+  ];
+
+  for (const dir of dirs) {
+    // 이 방향으로 가장 가까운 벽 거리 탐색
+    let wallDist = 0;
+    for (let d = STEP; d <= MAX; d += STEP) {
+      if (solid(bx + dir.dx * d, by + dir.dy * d)) { wallDist = d - STEP; break; }
+    }
+    if (wallDist < TS * 1.5) continue; // 너무 가까운 벽 제외
+
+    const wx = bx + dir.dx * wallDist;
+    const wy = by + dir.dy * wallDist;
+
+    // 벽 건너편에 목표를 반사한 가상 좌표
+    const rtx = dir.dx !== 0 ? 2 * wx - tx : tx;
+    const rty = dir.dy !== 0 ? 2 * wy - ty : ty;
+
+    const angle = Math.atan2(rty - by, rtx - bx);
+    const ax = Math.cos(angle), ay = Math.sin(angle);
+
+    // 조준 방향이 해당 벽 쪽을 향해야 함
+    if (ax * dir.dx + ay * dir.dy < 0.15) continue;
+
+    // 반사 후 목표 방향을 향하는지 검증
+    const rvx = dir.dx !== 0 ? -ax : ax;
+    const rvy = dir.dy !== 0 ? -ay : ay;
+    const dtx = tx - wx, dty = ty - wy;
+    const dlen = Math.hypot(dtx, dty) || 1;
+    const dot = (rvx * dtx + rvy * dty) / dlen;
+    if (dot < 0.6) continue;
+
+    const score = dot / (wallDist + Math.hypot(tx - wx, ty - wy));
+    if (score > bestScore) {
+      bestScore = score;
+      bestTx = bx + ax * 1000;
+      bestTy = by + ay * 1000;
+    }
+  }
+  return { x: bestTx, y: bestTy };
+}
+
+// AI 업데이트
+// ────────────────────────────────────────────────────────────
+function updateBot(bot, dt) {
+  // 팀전에서 죽은 봇 부활 처리 (솔로/녹아웃/바운티 제외)
+  if (!bot.alive) {
+    if (selMode !== 'solo' && selMode !== 'knockout' && selMode !== 'bounty' && !bot._bossMinion && !bot._isBoss) {
+      // 타이머가 설정 안 된 경우 대비
+      if (bot.botRespawnTimer <= 0) bot.botRespawnTimer = 15;
+      bot.botRespawnTimer -= dt;
+      if (bot.botRespawnTimer <= 0) {
+        // 부활!
+        const side = bot.team === 'enemy' ? 'right' : 'left';
+        const sp = safeSpawn(side);
+        bot.x = sp.x; bot.y = sp.y;
+        bot.hp = bot.maxHp;
+        bot.alive = true;
+        bot.botRespawnTimer = 0;
+        bot.superCharge = 0; bot.superReady = false;
+        bot.regenTimer = 0;
+        bot.invincTimer = 3;
+        spawnParts(bot.x, bot.y, bot.team === 'enemy' ? '#ff4444' : '#00ff88', 15);
+      }
+    }
+    return;
+  }
+  bot.aiTimer += 60*dt;
+  // 봇 탄약 충전
+  if (bot.ammo < 3) {
+    bot.ammoTimer += dt;
+    if (bot.ammoTimer >= bot.d.reload) {
+      bot.ammo++;
+      bot.ammoTimer = 0;
+    }
+  }
+
+  // 보스 로브 경고 회피: 착탄 예정 범위 안에 있으면 즉시 도망
+  if (bossLobWarning && !bot._isBoss) {
+    const lobDist = Math.hypot(bot.x - bossLobWarning.x, bot.y - bossLobWarning.y);
+    const dangerR = TS * 2.5;
+    if (lobDist < dangerR) {
+      const evadeAng = Math.atan2(bot.y - bossLobWarning.y, bot.x - bossLobWarning.x);
+      moveEntity(bot, Math.cos(evadeAng) * bot.d.spd * 1.4, Math.sin(evadeAng) * bot.d.spd * 1.4);
+    }
+  }
+
+  // 봇 벽 끼임 방지
+  const R2 = 10;
+  if (solid(bot.x-R2, bot.y) || solid(bot.x+R2, bot.y) ||
+      solid(bot.x, bot.y-R2) || solid(bot.x, bot.y+R2)) {
+    unstuck(bot);
+  }
+
+  // 타겟 결정 - 자기 팀이 아닌 모든 유닛 중 가장 가까운 대상
+  // 풀숲 안에 있는 유닛은 매우 가까이 가야 발견 (숨기 효과)
+  const BUSH_DETECT = 80; // 풀숲 속 유닛은 80px 이내만 감지
+  const NORMAL_DETECT = 350; // 일반 감지 거리
+
+  const allUnits = [player, ...bots];
+  const myTargets = allUnits.filter(t => {
+    if (!t || !t.alive) return false;
+    if (t === bot) return false;
+    // 솔로 모드: 다른 팀이면 모두 적
+    if (bot.team.startsWith('solo_')) return t.team !== bot.team;
+    // 팀전: enemy는 player+ally를, ally는 enemy를 공격
+    if (bot.team === 'enemy') return t === player || t.team === 'ally';
+    if (bot.team === 'ally')  return t.team === 'enemy' || t.team.startsWith('solo_');
+    return false;
+  });
+
+  // 시야 있는 타겟 / 없는 타겟 분리
+  let closest = null, closestD = Infinity;
+  let closestNoLOS = null, closestNoLOSD = Infinity; // 벽 뒤 타겟 (추격용)
+  for (const t of myTargets) {
+    const d = Math.hypot(t.x-bot.x, t.y-bot.y);
+    const detectRange = t.inBush ? BUSH_DETECT : (sandyBuff && (t === player || t.team === 'ally') ? 50 : NORMAL_DETECT);
+    if (d >= detectRange) continue;
+    const los = hasLOS(bot.x, bot.y, t.x, t.y);
+    if (los) {
+      if (d < closestD) { closestD=d; closest=t; }
+    } else {
+      // 벽 뒤에 있음 → 추격 대상으로만 기억
+      if (d < closestNoLOSD) { closestNoLOSD=d; closestNoLOS=t; }
+    }
+  }
+
+  const attackRange = Math.max(bot.d.range, 120);
+  const chaseRange  = attackRange * 0.75;
+
+  // 8비트 부스터 타겟: 적 팀 봇은 부스터를 우선 공격
+  if (damageBooster) {
+    const boosterIsEnemy =
+      (bot.team === 'enemy' || bot.team.startsWith('solo_')) &&
+      (damageBooster.team === 'player' || damageBooster.team === 'ally');
+    if (boosterIsEnemy) {
+      const bd = Math.hypot(bot.x - damageBooster.x, bot.y - damageBooster.y);
+      const bAng = Math.atan2(damageBooster.y - bot.y, damageBooster.x - bot.x);
+      bot.angle = bAng;
+      if (bd > attackRange * 0.9) {
+        moveEntity(bot, Math.cos(bAng)*bot.d.spd, Math.sin(bAng)*bot.d.spd);
+      }
+      bot.aiShootTimer -= 60*dt;
+      if (bot.aiShootTimer <= 0 && bot.ammo > 0 && bd < attackRange * 1.2) {
+        bot.ammo--;
+        bullets.push(...shootBullets(bot, damageBooster.x, damageBooster.y));
+        bot.aiShootTimer = 30 + Math.random()*40;
+      }
+      return; // 부스터 공격 중 다른 AI 스킵
+    }
+  }
+
+  // 팸 치유 포탑 타겟: 적 팀 봇은 치유 포탑을 우선 공격
+  if (healTurret) {
+    const turretIsEnemy =
+      (bot.team === 'enemy' || bot.team.startsWith('solo_')) &&
+      (healTurret.team === 'player' || healTurret.team === 'ally');
+    if (turretIsEnemy) {
+      const htd = Math.hypot(bot.x - healTurret.x, bot.y - healTurret.y);
+      const htAng = Math.atan2(healTurret.y - bot.y, healTurret.x - bot.x);
+      bot.angle = htAng;
+      if (htd > attackRange * 0.9) {
+        moveEntity(bot, Math.cos(htAng)*bot.d.spd, Math.sin(htAng)*bot.d.spd);
+      }
+      bot.aiShootTimer -= 60*dt;
+      if (bot.aiShootTimer <= 0 && bot.ammo > 0 && htd < attackRange * 1.2) {
+        bot.ammo--;
+        bullets.push(...shootBullets(bot, healTurret.x, healTurret.y));
+        bot.aiShootTimer = 30 + Math.random()*40;
+      }
+      return; // 치유 포탑 공격 중 다른 AI 스킵
+    }
+  }
+
+  if (closest) {
+    // 시야 확보된 타겟 → 정상 전투
+    const ang = Math.atan2(closest.y-bot.y, closest.x-bot.x);
+    bot.angle = ang;
+    bot.lastSeenTarget = { x: closest.x, y: closest.y }; // 마지막 위치 기억
+
+    if (!bot._noflee && bot.hp/bot.maxHp < 0.25) {
+      // 체력 낮으면 도망
+      moveEntity(bot, -Math.cos(ang)*bot.d.spd, -Math.sin(ang)*bot.d.spd);
+    } else if (closestD > chaseRange) {
+      // 추격
+      moveEntity(bot, Math.cos(ang)*bot.d.spd*0.9, Math.sin(ang)*bot.d.spd*0.9);
+    }
+
+    // 공격 (시야 있을 때만)
+    bot.aiShootTimer -= 60*dt;
+    if (bot.aiShootTimer <= 0 && bot.ammo > 0 && closestD < attackRange * 1.1) {
+
+      // 슈퍼 게이지가 찼으면 슈퍼 우선 발동
+      if (bot.superReady) {
+        const meleeSuperKeys = ['elprimo','bull','edgar','mortis','frank'];
+        const useSuper =
+          (meleeSuperKeys.includes(bot.defKey) && closestD < TS*6) ||
+          (bot.defKey === 'hisoka'  && closestD < TS*6) ||
+          (bot.defKey === 'gene'    && closestD < 500) ||
+          (bot.defKey === 'piper'   && closestD < TS*8) ||
+          (bot.defKey === 'bo'      && closestD < TS*12) ||
+          (!meleeSuperKeys.includes(bot.defKey) && closestD < attackRange * 1.5);
+        if (useSuper) {
+          botActivateSuper(bot, closest);
+          bot.aiShootTimer = 90 + Math.random()*60;
+          return;
+        }
+      }
+
+      // 버스트 발사: 1~현재탄약 중 랜덤 개수
+      const burst = Math.min(bot.ammo, 1 + Math.floor(Math.random() * 3));
+      bot.ammo -= burst;
+      const _rawTarget = { x: closest.x, y: closest.y };
+      const capturedTarget = bot.d.atk === 'bounce'
+        ? calcBounceAimTarget(bot.x, bot.y, _rawTarget.x, _rawTarget.y)
+        : _rawTarget;
+      if (bot.d.atk === 'arrow' || bot.defKey === 'colt' || bot.defKey === 'rico' || bot.defKey === 'jessie') {
+        // 보·콜트·리코·제시: 5발 시간차 연사
+        const shotCount = 5;
+        const delay     = bot.d.atk === 'arrow' ? 120 : 100;
+        for (let i = 0; i < shotCount; i++) {
+          setTimeout(() => {
+            if (!bot.alive) return;
+            bullets.push(...shootBullets(bot, capturedTarget.x, capturedTarget.y));
+            if (player && Math.hypot(bot.x - player.x, bot.y - player.y) < W * 0.65)
+              SFX.botShoot(bot.d.atk);
+          }, i * delay);
+        }
+      } else if (bot.defKey === 'feitan') {
+        // 팸: 6발 시간차 연사
+        for (let i = 0; i < 6; i++) {
+          setTimeout(() => {
+            if (!bot.alive) return;
+            bullets.push(...shootBullets(bot, capturedTarget.x, capturedTarget.y));
+            if (player && Math.hypot(bot.x - player.x, bot.y - player.y) < W * 0.65)
+              SFX.botShoot('bullet');
+          }, i * 80);
+        }
+      } else {
+        for (let i = 0; i < burst; i++) {
+          setTimeout(() => {
+            if (!bot.alive) return;
+            bullets.push(...shootBullets(bot, capturedTarget.x, capturedTarget.y));
+            if (player && Math.hypot(bot.x - player.x, bot.y - player.y) < W * 0.65)
+              SFX.botShoot(bot.d.atk);
+          }, i * 110);
+        }
+      }
+      // 버스트 후 짧은 대기 (탄약 충전은 별도로 진행됨)
+      bot.aiShootTimer = 40 + Math.random() * 80;
+    }
+
+  } else if (closestNoLOS) {
+    const ang = Math.atan2(closestNoLOS.y-bot.y, closestNoLOS.x-bot.x);
+    bot.angle = ang;
+
+    if (bot.d.atk === 'lob') {
+      // 투척 공격자: 벽 너머도 그냥 공격 (이동 불필요)
+      bot.aiShootTimer -= 60*dt;
+      if (bot.aiShootTimer <= 0 && bot.ammo > 0 && closestNoLOSD < attackRange * 1.2) {
+        bot.ammo--;
+        bullets.push(...shootBullets(bot, closestNoLOS.x, closestNoLOS.y));
+        if (player && Math.hypot(bot.x-player.x, bot.y-player.y) < W*0.65) SFX.botShoot(bot.d.atk);
+        bot.aiShootTimer = 40 + Math.random()*60;
+      }
+    } else if (bot.superReady && ['edgar','crow','bull','mortis'].includes(bot.defKey) && closestNoLOSD < TS*10) {
+      // 벽 점프 가능한 브롤러: 슈퍼로 벽 넘어 타겟에게 돌진
+      botActivateSuper(bot, closestNoLOS);
+      bot.aiShootTimer = 60 + Math.random()*60;
+    } else {
+      // 일반 브롤러: 벽을 우회해서 추격
+      const sideAngle = ang + (Math.sin(bot.aiTimer * 0.05) * 0.6);
+      moveEntity(bot, Math.cos(sideAngle)*bot.d.spd*0.8, Math.sin(sideAngle)*bot.d.spd*0.8);
+    }
+
+  } else if (bot.lastSeenTarget) {
+    // 마지막으로 본 위치로 이동
+    const dx2 = bot.lastSeenTarget.x - bot.x, dy2 = bot.lastSeenTarget.y - bot.y;
+    const dist2 = Math.hypot(dx2, dy2);
+    if (dist2 > 20) {
+      const ang = Math.atan2(dy2, dx2);
+      bot.angle = ang;
+      moveEntity(bot, Math.cos(ang)*bot.d.spd*0.7, Math.sin(ang)*bot.d.spd*0.7);
+    } else {
+      bot.lastSeenTarget = null; // 도착하면 초기화 → 배회로 전환
+    }
+  } else {
+    // 타겟 없음 → 젬그랩/시즈 모드면 가장 가까운 보석으로 이동, 아니면 배회
+    let movedToGem = false;
+    if ((selMode==='gemgrab'||selMode==='siege') && gems.length > 0) {
+      let nearestGem = null, nearestDist = Infinity;
+      for (const g of gems) {
+        if (!g.alive) continue;
+        const gd = Math.hypot(g.x-bot.x, g.y-bot.y);
+        if (gd < nearestDist) { nearestDist=gd; nearestGem=g; }
+      }
+      if (nearestGem && nearestDist > 30) {
+        const ang = Math.atan2(nearestGem.y-bot.y, nearestGem.x-bot.x);
+        bot.angle = ang;
+        moveEntity(bot, Math.cos(ang)*bot.d.spd*0.8, Math.sin(ang)*bot.d.spd*0.8);
+        movedToGem = true;
+      }
+    }
+    if (!movedToGem) {
+      // 배회
+      bot.wanderTimer = (bot.wanderTimer||0) - dt;
+      if (bot.wanderTimer <= 0) {
+        bot.aiAngle = Math.random()*Math.PI*2;
+        bot.wanderTimer = 1.5 + Math.random()*2;
+      }
+      moveEntity(bot, Math.cos(bot.aiAngle)*bot.d.spd*0.55, Math.sin(bot.aiAngle)*bot.d.spd*0.55);
+      bot.angle = bot.aiAngle;
+    }
+  }
+
+  // 덤불
+  const tx = bot.x/TS|0, ty = bot.y/TS|0;
+  bot.inBush = map[ty] && map[ty][tx]===T.BUSH;
+}
+
+// ────────────────────────────────────────────────────────────
+// 파티클 업데이트/그리기
+// ────────────────────────────────────────────────────────────
+function updateParticles(dt) {
+  particles = particles.filter(p => {
+    p.x += p.vx; p.y += p.vy;
+    p.vx *= 0.88; p.vy *= 0.88;
+    p.life -= dt*2.5;
+    return p.life > 0;
+  });
+}
+function drawParticles() {
+  for (const p of particles) {
+    ctx.save();
+    ctx.globalAlpha = p.life;
+    ctx.fillStyle = p.color;
+    ctx.beginPath();
+    ctx.arc(p.x-cam.x, p.y-cam.y, p.r*p.life, 0, Math.PI*2);
+    ctx.fill();
+    ctx.restore();
+  }
+}
+
+// ────────────────────────────────────────────────────────────
+// 지뢰 (보 슈퍼)
+// ────────────────────────────────────────────────────────────
+// ────────────────────────────────────────────────────────────
+// 추가 모드 업데이트
+// ────────────────────────────────────────────────────────────
+
+// 하이스트 금고 위치 (상수처럼 사용)
+const HEIST_ALLY_VAULT  = { x: 2*TS,       y: MY*TS/2 };
+const HEIST_ENEMY_VAULT = { x: (MX-2)*TS,  y: MY*TS/2 };
+
+// 하이스트: 업데이트(충돌/승패)만 담당
+function updateHeist(dt) {
+  if (!heistHp) return;
+  for (const b of bullets) {
+    if (!b.alive) continue;
+    if (b.owner==='player'||b.owner==='ally') {
+      if (Math.hypot(b.x-HEIST_ENEMY_VAULT.x, b.y-HEIST_ENEMY_VAULT.y)<30) {
+        heistHp.enemy -= b.dmg;
+        b.alive=false;
+        spawnParts(HEIST_ENEMY_VAULT.x, HEIST_ENEMY_VAULT.y, '#ff4444', 3);
+        if (b.owner==='player') { chargePlayerSuper(b.isSuper); SFX.hit(); } // 금고 공격 시 슈퍼 충전 + 소리
+      }
+    } else if (b.owner==='enemy') {
+      if (Math.hypot(b.x-HEIST_ALLY_VAULT.x, b.y-HEIST_ALLY_VAULT.y)<30) {
+        heistHp.ally -= b.dmg;
+        b.alive=false;
+        spawnParts(HEIST_ALLY_VAULT.x, HEIST_ALLY_VAULT.y, '#4444ff', 3);
+        SFX.hit(); // 아군 금고 피격 소리
+      }
+    }
+  }
+  if (heistHp.enemy<=0) { endGame(true); return; }
+  if (heistHp.ally<=0)  { endGame(false); return; }
+}
+
+// 하이스트: 그리기만 담당 (clearRect 이후 호출)
+function drawHeist() {
+  if (!heistHp) return;
+  const vaultDraw = (vx,vy,hp,max,col) => {
+    const sx=vx-cam.x, sy=vy-cam.y;
+    ctx.save();
+    ctx.font='28px serif'; ctx.textAlign='center'; ctx.textBaseline='middle';
+    ctx.fillText('🏦', sx, sy);
+    ctx.fillStyle='rgba(0,0,0,0.6)'; ctx.fillRect(sx-22,sy-32,44,7);
+    ctx.fillStyle=col; ctx.fillRect(sx-22,sy-32,44*(hp/max),7);
+    ctx.restore();
+  };
+  vaultDraw(HEIST_ALLY_VAULT.x,  HEIST_ALLY_VAULT.y,  heistHp.ally,  20000,'#44aaff');
+  vaultDraw(HEIST_ENEMY_VAULT.x, HEIST_ENEMY_VAULT.y, heistHp.enemy, 20000,'#ff4444');
+}
+
+// 브롤볼: 공을 적 골대에 넣기
+function updateBrawlBall(dt) {
+  if (!brawlBall) return;
+  const ball = brawlBall;
+  const goalL = { x: TS*1.5, y: MY*TS/2, r:30 };
+  const goalR = { x: (MX-1.5)*TS, y: MY*TS/2, r:30 };
+
+  if (!ball.holder) {
+    const prevX = ball.x, prevY = ball.y;
+    ball.x += ball.vx; ball.y += ball.vy;
+    ball.vx *= 0.95; ball.vy *= 0.95;
+    if (solid(ball.x, ball.y)) {
+      // X축만 되돌리기
+      if (!solid(prevX, ball.y)) {
+        ball.x = prevX; ball.vx *= -0.7;
+      // Y축만 되돌리기
+      } else if (!solid(ball.x, prevY)) {
+        ball.y = prevY; ball.vy *= -0.7;
+      // 양쪽 막힘: 완전히 이전 위치로
+      } else {
+        ball.x = prevX; ball.y = prevY;
+        ball.vx *= -0.7; ball.vy *= -0.7;
+      }
+    }
+    // 벽에 완전히 갇혔을 때(속도 0에 가까움) 중앙으로 리셋
+    if (solid(ball.x, ball.y)) {
+      ball.x = MX*TS/2; ball.y = MY*TS/2;
+      ball.vx = 0; ball.vy = 0;
+    }
+    // 줍기
+    const allE = [player, ...bots].filter(e=>e&&e.alive);
+    for (const e of allE) {
+      if (Math.hypot(e.x-ball.x, e.y-ball.y)<25) { ball.holder=e; break; }
+    }
+  } else {
+    const h = ball.holder;
+    if (!h.alive) { ball.holder=null; ball.vx=(Math.random()-0.5)*4; ball.vy=(Math.random()-0.5)*4; return; }
+    ball.x=h.x; ball.y=h.y;
+    // 공 가진 상태에서 이동 시 상대팀과 충돌하면 공 떨굼
+    const foes = [player,...bots].filter(e=>e&&e.alive&&e!==h&&e.team!==h.team&&!(h.team==='player'&&e.team==='ally')&&!(h===player&&e.team==='ally'));
+    for (const f of foes) {
+      if (Math.hypot(f.x-h.x,f.y-h.y)<28) {
+        ball.holder=null;
+        ball.vx=Math.cos(Math.atan2(h.y-f.y,h.x-f.x))*5;
+        ball.vy=Math.sin(Math.atan2(h.y-f.y,h.x-f.x))*5;
+        break;
+      }
+    }
+  }
+  // 골 체크
+  if (Math.hypot(ball.x-goalR.x,ball.y-goalR.y)<goalR.r) {
+    score+=5; endGame(true); return;
+  }
+  if (Math.hypot(ball.x-goalL.x,ball.y-goalL.y)<goalL.r) {
+    endGame(false); return;
+  }
+}
+function drawBrawlBall() {
+  if (!brawlBall) return;
+  const ball = brawlBall;
+  const goalL = { x: TS*1.5,      y: MY*TS/2, r:30 };
+  const goalR = { x: (MX-1.5)*TS, y: MY*TS/2, r:30 };
+  // 골대 그리기
+  [[goalL,'#44aaff'],[goalR,'#ff4444']].forEach(([g,c])=>{
+    const gx=g.x-cam.x, gy=g.y-cam.y;
+    ctx.save(); ctx.strokeStyle=c; ctx.lineWidth=4;
+    ctx.beginPath(); ctx.arc(gx,gy,g.r,0,Math.PI*2); ctx.stroke();
+    ctx.font='24px serif'; ctx.textAlign='center'; ctx.textBaseline='middle';
+    ctx.fillText('🥅',gx,gy); ctx.restore();
+  });
+  // 공 그리기 (흰색 + 검정 패턴)
+  const bx = ball.holder ? ball.holder.x : ball.x;
+  const by = ball.holder ? ball.holder.y - 20 : ball.y;
+  const sx = bx - cam.x, sy = by - cam.y;
+  const R = 10;
+  ctx.save();
+  // 흰 원
+  ctx.beginPath(); ctx.arc(sx, sy, R, 0, Math.PI*2);
+  ctx.fillStyle = '#ffffff'; ctx.fill();
+  ctx.strokeStyle = '#333'; ctx.lineWidth = 1.5; ctx.stroke();
+  // 검정 오각형 패턴
+  ctx.fillStyle = '#111';
+  const drawPatch = (cx, cy, r) => {
+    ctx.beginPath();
+    for (let i = 0; i < 5; i++) {
+      const a = Math.PI*2/5*i - Math.PI/2;
+      i===0 ? ctx.moveTo(cx+Math.cos(a)*r, cy+Math.sin(a)*r)
+             : ctx.lineTo(cx+Math.cos(a)*r, cy+Math.sin(a)*r);
+    }
+    ctx.closePath(); ctx.fill();
+  };
+  drawPatch(sx, sy, 3.2); // 중앙
+  for (let i = 0; i < 5; i++) {
+    const a = Math.PI*2/5*i - Math.PI/2;
+    drawPatch(sx + Math.cos(a)*6.5, sy + Math.sin(a)*6.5, 2.0);
+  }
+  ctx.restore();
+}
+
+// 시즈: 볼트 모아 로봇 보내기
+function updateSiege(dt) {
+  siegeTimer -= dt;
+  // 볼트 스폰 (중앙 근처)
+  if (Math.random()<dt*0.5) {
+    const tx2=8+Math.random()*4|0, ty2=5+Math.random()*5|0;
+    if (map[ty2]&&map[ty2][tx2]===0) gems.push({x:tx2*TS+TS/2,y:ty2*TS+TS/2,alive:true,bob:0,isBolt:true});
+  }
+  updateGems(dt);
+  // 볼트 수 = 아군 gem 합계
+  siegeBolts.ally = (player?player.gems:0)+bots.filter(b=>b.team==='ally').reduce((s,b)=>s+b.gems,0);
+  // 볼트 10개 모으면 로봇 발사
+  if (siegeBolts.ally>=10 && !siegeBot) {
+    player.gems=0; bots.filter(b=>b.team==='ally').forEach(b=>b.gems=0);
+    siegeBolts.ally=0; gems=[];
+    const sp=safeSpawn('left');
+    siegeBot=makeEntity(sp.x,sp.y,'frank','ally');
+    siegeBot.hp=siegeBot.maxHp=20000;
+    siegeBot.d=Object.assign({},siegeBot.d,{ico:'🤖',name:'시즈봇',spd:2.0,dmg:1200,range:150});
+    siegeBot._siege=true;
+    bots.push(siegeBot);
+    spawnParts(sp.x,sp.y,'#ffe100',20);
+  }
+  if (siegeTimer<=0) { endGame(false); return; }
+  // 적 IQ 다운 (적도 볼트 줍는 척하지만 간단히 구현)
+}
+
+// 녹아웃: 부활 없이 3전2선승제
+let koRound=0, koWins={ally:0,enemy:0};
+function updateKnockout(dt) {
+  const aliveE=bots.filter(b=>b.team==='enemy'&&b.alive).length;
+  const aliveA=bots.filter(b=>b.team==='ally'&&b.alive).length+(player&&player.alive?1:0);
+  if (aliveE===0) {
+    koWins.ally++;
+    if (koWins.ally>=2) { endGame(true); return; }
+    koRound++; respawnRound();
+  } else if (aliveA===0) {
+    koWins.enemy++;
+    if (koWins.enemy>=2) { endGame(false); return; }
+    koRound++; respawnRound();
+  }
+}
+function respawnRound() {
+  const ps=safeSpawn('left'); player.x=ps.x; player.y=ps.y; player.hp=player.maxHp; player.alive=true; isDead=false;
+  bots.forEach(b=>{ if(b.team==='ally'||b.team==='enemy'){ const sp=safeSpawn(b.team==='ally'?'left':'right'); b.x=sp.x;b.y=sp.y;b.hp=b.maxHp;b.alive=true;b.botRespawnTimer=0;b.botRespawnCount=0;}});
+  spawnParts(player.x,player.y,'#ffe100',15);
+}
+
+function updateMines(dt) {
+  mines = mines.filter(mine => {
+    if (!mine.alive) return false;
+    mine.timer -= dt;
+    if (mine.timer <= 0) {
+      // 폭발
+      spawnParts(mine.x, mine.y, '#2e7d32', 18);
+      spawnParts(mine.x, mine.y, '#ff8f00', 12);
+      const targets = getTargets(mine.owner);
+      const attacker = mine.owner==='player' ? player : null;
+      for (const t of targets) {
+        if (!t.alive) continue;
+        const d = Math.hypot(t.x-mine.x, t.y-mine.y);
+        if (d < TS*3) { damage(t, 1200*(1-d/(TS*3)*0.5), attacker); checkKill(t, mine.owner); }
+      }
+      return false;
+    }
+    // 근접 시 즉시 폭발 (적이 밟으면)
+    const targets2 = getTargets(mine.owner);
+    for (const t of targets2) {
+      if (!t.alive) continue;
+      if (Math.hypot(t.x-mine.x, t.y-mine.y) < 28) {
+        mine.timer = 0; // 다음 프레임에 폭발
+        return true;
+      }
+    }
+    return true;
+  });
+}
+function drawMines() {
+  for (const mine of mines) {
+    if (!mine.alive) continue;
+    const sx = mine.x - cam.x, sy = mine.y - cam.y;
+    ctx.save();
+    ctx.font = '18px serif';
+    ctx.textAlign = 'center'; ctx.textBaseline = 'middle';
+    ctx.fillText('💣', sx, sy);
+    ctx.fillStyle = mine.timer < 0.5 ? '#ff4444' : '#fff';
+    ctx.font = 'bold 10px Arial';
+    ctx.fillText(`${mine.timer.toFixed(1)}s`, sx, sy+14);
+    ctx.restore();
+  }
+}
+
+function updateHealTurret(dt) {
+  if (!healTurret) return;
+  healTurret.healTimer = (healTurret.healTimer || 0) + dt;
+  if (healTurret.healTimer >= 0.5) {
+    healTurret.healTimer = 0;
+    const healRange = TS * 6;
+    const healAmt = 600;
+    const allies = [player, ...bots].filter(t => t && t.alive &&
+      (t === player || t.team === 'ally' || t.team === healTurret.team));
+    for (const t of allies) {
+      const hd = Math.hypot(t.x - healTurret.x, t.y - healTurret.y);
+      if (hd < healRange && t.hp < t.maxHp) {
+        t.hp = Math.min(t.maxHp, t.hp + healAmt);
+        spawnParts(t.x, t.y, '#4caf50', 5);
+      }
+    }
+  }
+}
+
+function drawHealTurret() {
+  if (!healTurret) return;
+  const sx = healTurret.x - cam.x, sy = healTurret.y - cam.y;
+  const r = TS * 6;
+  ctx.save();
+  ctx.beginPath();
+  ctx.arc(sx, sy, r, 0, Math.PI*2);
+  ctx.strokeStyle = 'rgba(76,175,80,0.5)';
+  ctx.lineWidth = 2;
+  ctx.setLineDash([6,4]);
+  ctx.stroke();
+  ctx.fillStyle = 'rgba(76,175,80,0.08)';
+  ctx.fill();
+  ctx.restore();
+  ctx.save();
+  ctx.font = '22px serif';
+  ctx.textAlign = 'center'; ctx.textBaseline = 'middle';
+  ctx.fillText('💊', sx, sy);
+  const bw = 36, bh = 5;
+  const hpRatio = Math.max(0, healTurret.hp / healTurret.maxHp);
+  ctx.fillStyle = '#333';
+  ctx.fillRect(sx - bw/2, sy + 14, bw, bh);
+  ctx.fillStyle = hpRatio > 0.5 ? '#4caf50' : hpRatio > 0.25 ? '#ff9800' : '#f44336';
+  ctx.fillRect(sx - bw/2, sy + 14, bw * hpRatio, bh);
+  ctx.restore();
+}
+
+function drawDamageBooster() {
+  if (!damageBooster) return;
+  const sx = damageBooster.x - cam.x, sy = damageBooster.y - cam.y;
+  const r = TS * 6;
+  // 범위 원
+  ctx.save();
+  ctx.beginPath();
+  ctx.arc(sx, sy, r, 0, Math.PI*2);
+  ctx.strokeStyle = 'rgba(229,57,53,0.5)';
+  ctx.lineWidth = 2;
+  ctx.setLineDash([6,4]);
+  ctx.stroke();
+  ctx.fillStyle = 'rgba(229,57,53,0.08)';
+  ctx.fill();
+  ctx.restore();
+  // 포탑 아이콘
+  ctx.save();
+  ctx.font = '22px serif';
+  ctx.textAlign = 'center'; ctx.textBaseline = 'middle';
+  ctx.fillText('🕹', sx, sy);
+  // HP 바
+  const bw = 36, bh = 5;
+  const hpRatio = Math.max(0, damageBooster.hp / damageBooster.maxHp);
+  ctx.fillStyle = '#333';
+  ctx.fillRect(sx - bw/2, sy + 14, bw, bh);
+  ctx.fillStyle = hpRatio > 0.5 ? '#4caf50' : hpRatio > 0.25 ? '#ff9800' : '#f44336';
+  ctx.fillRect(sx - bw/2, sy + 14, bw * hpRatio, bh);
+  ctx.restore();
+}
+
+// ────────────────────────────────────────────────────────────
+// 보스전 함수들
+// ────────────────────────────────────────────────────────────
+function bossGetTargets() {
+  return [player, ...bots.filter(b => b !== bossEnt && b.team === 'ally')].filter(t => t && t.alive);
+}
+
+function bossShootSpread(count, dmg) {
+  const targets = bossGetTargets();
+  if (!targets.length) return;
+  let nearest = targets[0], nearestD = Math.hypot(targets[0].x - bossEnt.x, targets[0].y - bossEnt.y);
+  for (const t of targets) {
+    const d = Math.hypot(t.x - bossEnt.x, t.y - bossEnt.y);
+    if (d < nearestD) { nearestD = d; nearest = t; }
+  }
+  const baseAngle = Math.atan2(nearest.y - bossEnt.y, nearest.x - bossEnt.x);
+  const spread = count > 1 ? 0.35 : 0;
+  for (let i = 0; i < count; i++) {
+    const a = baseAngle + (i - (count - 1) / 2) * spread;
+    const spd = 6;
+    const b = makeBullet(bossEnt.x, bossEnt.y, Math.cos(a)*spd, Math.sin(a)*spd,
+      dmg, 'enemy', '#ff2200', 'normal', 8);
+    b.life = 75; bullets.push(b);
+  }
+  SFX.botShoot('bullet');
+}
+
+function bossDoShockwave() {
+  const cnt = bossPhase >= 3 ? 16 : 12;
+  const dmg = bossPhase >= 3 ? 1500 : 1100;
+  for (let i = 0; i < cnt; i++) {
+    const a = (Math.PI * 2 / cnt) * i;
+    const spd = 5;
+    const b = makeBullet(bossEnt.x, bossEnt.y, Math.cos(a)*spd, Math.sin(a)*spd,
+      dmg, 'enemy', '#7cb342', 'normal', 10);
+    b.life = 55; b.poison = true; b.poisonDuration = 3.0; bullets.push(b);
+  }
+  spawnParts(bossEnt.x, bossEnt.y, '#7cb342', 35);
+  SFX.lobExplode();
+}
+
+function bossLobAttack() {
+  const targets = bossGetTargets();
+  if (!targets.length) return;
+  const t = targets[Math.random() * targets.length | 0];
+  // 2초 경고 표시 먼저
+  bossLobWarning = { x: t.x, y: t.y, timer: 2.0 };
+}
+
+function bossFireLob(wx, wy) {
+  const dist = Math.max(60, Math.hypot(wx - bossEnt.x, wy - bossEnt.y));
+  const ttime = Math.max(20, Math.min(80, dist / 7));
+  const spd2 = dist / ttime;
+  const a = Math.atan2(wy - bossEnt.y, wx - bossEnt.x);
+  const b = makeBullet(bossEnt.x, bossEnt.y, Math.cos(a)*spd2, Math.sin(a)*spd2,
+    (bossEnt._bossDmg || 1200) * 5, 'enemy', '#ff2200', 'lob', 12);
+  b.life = 0; b.lobLife = ttime; b.lobMax = ttime; b.lobRadius = TS * 2.0; b.isBossLob = true;
+  bullets.push(b);
+  spawnParts(bossEnt.x, bossEnt.y, '#ff4400', 10);
+}
+
+function bossSpawnMinion() {
+  const minionPool = ['shelly','colt','bull','edgar','elprimo'];
+  const key = minionPool[Math.random() * minionPool.length | 0];
+  const side = Math.random() < 0.5 ? 'right' : 'any';
+  const sp = safeSpawn(side);
+  const minion = makeEntity(sp.x, sp.y, key, 'enemy');
+  minion.hp = Math.round(minion.hp * 0.7);
+  minion.maxHp = minion.hp;
+  minion._bossMinion = true;
+  bots.push(minion);
+  spawnParts(sp.x, sp.y, '#ff0000', 15);
+}
+
+function spawnNextBoss() {
+  const w = BOSS_WAVES[bossWave - 1];
+  const bsp = { x: (MX-3)*TS, y: MY*TS/2 };
+  // 기존 보스/부하 제거
+  bots = bots.filter(b => !b._isBoss && !b._bossMinion);
+  bossEnt = makeEntity(bsp.x, bsp.y, 'frank', 'enemy');
+  bossEnt.hp = bossEnt.maxHp = w.hp;
+  bossEnt.d = Object.assign({}, bossEnt.d, {
+    name: w.name, ico: w.ico, color: w.color,
+    spd: w.spd, dmg: w.dmg, range: 320, reload: w.fireRate, atk: 'bullet', regen: 0
+  });
+  bossEnt._isBoss = true;
+  bossEnt._bossSpd = w.spd;
+  bossEnt._bossDmg = w.dmg;
+  bossEnt._bossFireRate = w.fireRate;
+  bots.push(bossEnt);
+  bossPhase = 1;
+  bossAttackTimer = 1.5;
+  bossShockwaveTimer = 8;
+  bossMinionTimer = 20;
+  bossLobTimer = 6;
+  bossWaveClearing = false;
+  // 플레이어·아군 체력 회복
+  if (player && player.alive) { player.hp = player.maxHp; player.regenTimer = 0; }
+  bots.forEach(b => { if (b.team === 'ally' && b.alive) { b.hp = b.maxHp; b.regenTimer = 0; } });
+  spawnParts(bsp.x, bsp.y, w.color, 60);
+  SFX.superActivate();
+}
+
+function updateBoss(dt) {
+  if (!bossEnt || !bossEnt.alive) return;
+
+  const hpRatio = bossEnt.hp / bossEnt.maxHp;
+  const newPhase = hpRatio > 0.5 ? 1 : hpRatio > 0.25 ? 2 : 3;
+
+  if (newPhase > bossPhase) {
+    bossPhase = newPhase;
+    spawnParts(bossEnt.x, bossEnt.y, '#ff0000', 50);
+    spawnParts(bossEnt.x, bossEnt.y, '#ffffff', 20);
+    SFX.superActivate();
+    // 페이즈별 강화
+    if (bossPhase === 2) {
+      bossEnt._bossSpd = 2.3; bossEnt._bossDmg = 1500; bossEnt._bossFireRate = 1.0;
+    } else if (bossPhase === 3) {
+      bossEnt._bossSpd = 3.0; bossEnt._bossDmg = 1800; bossEnt._bossFireRate = 0.65;
+    }
+  }
+
+  const targets = bossGetTargets();
+  if (!targets.length) return;
+
+  let nearest = targets[0], nearestD = Math.hypot(targets[0].x - bossEnt.x, targets[0].y - bossEnt.y);
+  for (const t of targets) {
+    const d = Math.hypot(t.x - bossEnt.x, t.y - bossEnt.y);
+    if (d < nearestD) { nearestD = d; nearest = t; }
+  }
+
+  bossEnt.angle = Math.atan2(nearest.y - bossEnt.y, nearest.x - bossEnt.x);
+  const spd = bossEnt._bossSpd || 1.8;
+  const keepDist = bossPhase === 1 ? 180 : bossPhase === 2 ? 130 : 90;
+
+  if (nearestD > keepDist) {
+    moveEntity(bossEnt, Math.cos(bossEnt.angle) * spd, Math.sin(bossEnt.angle) * spd);
+  } else if (nearestD < 60) {
+    moveEntity(bossEnt, -Math.cos(bossEnt.angle) * spd * 0.8, -Math.sin(bossEnt.angle) * spd * 0.8);
+  }
+
+  // 기본 공격
+  bossAttackTimer -= dt;
+  if (bossAttackTimer <= 0) {
+    bossAttackTimer = bossEnt._bossFireRate || 1.5;
+    const cnt = bossPhase === 1 ? 3 : bossPhase === 2 ? 5 : 7;
+    bossShootSpread(cnt, bossEnt._bossDmg || 1200);
+  }
+
+  // 충격파
+  bossShockwaveTimer -= dt;
+  if (bossShockwaveTimer <= 0) {
+    bossShockwaveTimer = bossPhase >= 3 ? 5 : 8;
+    bossDoShockwave();
+  }
+
+  // 벽 너머 로브 공격
+  bossLobTimer -= dt;
+  if (bossLobTimer <= 0) {
+    bossLobTimer = bossPhase >= 3 ? 4 : bossPhase === 2 ? 6 : 8;
+    bossLobAttack();
+  }
+  // 경고 타이머 → 만료 시 발사
+  if (bossLobWarning) {
+    bossLobWarning.timer -= dt;
+    if (bossLobWarning.timer <= 0) {
+      if (bossEnt && bossEnt.alive) bossFireLob(bossLobWarning.x, bossLobWarning.y);
+      bossLobWarning = null;
+    }
+  }
+
+  // 페이즈2+ 부하 소환
+  if (bossPhase >= 2) {
+    bossMinionTimer -= dt;
+    if (bossMinionTimer <= 0) {
+      bossMinionTimer = bossPhase >= 3 ? 10 : 18;
+      bossSpawnMinion();
+    }
+  }
+
+  // 벽 끼임 방지
+  const R2 = 15;
+  if (solid(bossEnt.x-R2, bossEnt.y) || solid(bossEnt.x+R2, bossEnt.y) ||
+      solid(bossEnt.x, bossEnt.y-R2) || solid(bossEnt.x, bossEnt.y+R2)) {
+    unstuck(bossEnt);
+  }
+}
+
+function drawBossLobWarning() {
+  if (!bossLobWarning) return;
+  const sx = bossLobWarning.x - cam.x;
+  const sy = bossLobWarning.y - cam.y;
+  const ratio = 1 - bossLobWarning.timer / 2.0; // 0→1로 점점 커짐
+  const r = TS * 2.0 * (0.4 + ratio * 0.6);
+  const alpha = 0.3 + Math.sin(Date.now() * 0.01) * 0.2;
+  ctx.save();
+  ctx.globalAlpha = alpha;
+  ctx.strokeStyle = '#ff0000';
+  ctx.lineWidth = 3 + ratio * 3;
+  ctx.beginPath();
+  ctx.arc(sx, sy, r, 0, Math.PI * 2);
+  ctx.stroke();
+  ctx.globalAlpha = alpha * 0.15;
+  ctx.fillStyle = '#ff0000';
+  ctx.fill();
+  ctx.restore();
+}
+
+function drawBoss() {
+  if (!bossEnt || !bossEnt.alive) return;
+  const sx = bossEnt.x - cam.x, sy = bossEnt.y - cam.y;
+  if (sx < -70 || sx > W+70 || sy < -70 || sy > H+70) return;
+
+  const R = 30 + (bossPhase - 1) * 4;
+  const hpRatio = bossEnt.hp / bossEnt.maxHp;
+
+  // 그림자
+  ctx.fillStyle = 'rgba(0,0,0,0.35)';
+  ctx.beginPath();
+  ctx.ellipse(sx, sy + R + 6, R * 1.3, R * 0.4, 0, 0, Math.PI*2);
+  ctx.fill();
+
+  const wData = BOSS_WAVES[bossWave - 1] || BOSS_WAVES[0];
+  const bColor = wData.color;
+
+  // 페이즈3 분노 오라
+  if (bossPhase >= 3) {
+    const aura = R + 12 + Math.sin(Date.now()*0.009)*8;
+    ctx.beginPath();
+    ctx.arc(sx, sy, aura, 0, Math.PI*2);
+    ctx.fillStyle = `rgba(255,80,0,${0.15 + Math.sin(Date.now()*0.007)*0.08})`;
+    ctx.fill();
+  }
+  // 페이즈2 오라
+  if (bossPhase === 2) {
+    ctx.beginPath();
+    ctx.arc(sx, sy, R + 8 + Math.sin(Date.now()*0.008)*5, 0, Math.PI*2);
+    ctx.fillStyle = `rgba(200,100,0,0.12)`;
+    ctx.fill();
+  }
+
+  // 몸체 (웨이브 색상 적용)
+  ctx.beginPath();
+  ctx.arc(sx, sy, R, 0, Math.PI*2);
+  ctx.fillStyle = bossEnt.flash > 0 ? '#fff' : bColor;
+  ctx.fill();
+  ctx.strokeStyle = bossPhase >= 3 ? '#ff4400' : bossPhase >= 2 ? '#ff8800' : '#ffcc00';
+  ctx.lineWidth = 5;
+  ctx.stroke();
+  if (bossEnt.flash > 0) bossEnt.flash--;
+
+  // 이모지 (웨이브별 아이콘)
+  ctx.font = `${R * 1.4}px serif`;
+  ctx.textAlign = 'center'; ctx.textBaseline = 'middle';
+  ctx.fillText(wData.ico, sx, sy);
+
+  // 페이즈 별
+  ctx.font = '16px serif';
+  ctx.textAlign = 'center';
+  for (let i = 0; i < bossPhase; i++) {
+    ctx.fillText('⭐', sx - (bossPhase - 1) * 12 + i * 24, sy + R + 18);
+  }
+
+  // HP 바
+  const bw = 90, bh = 10;
+  const bx = sx - bw/2, by = sy - R - 26;
+  ctx.fillStyle = 'rgba(0,0,0,0.75)';
+  ctx.fillRect(bx-1, by-1, bw+2, bh+2);
+  ctx.fillStyle = hpRatio > 0.5 ? '#ff4444' : hpRatio > 0.25 ? '#ff8800' : '#ff0000';
+  ctx.fillRect(bx, by, bw * hpRatio, bh);
+
+  // 보스 이름 (웨이브별 이름)
+  ctx.fillStyle = '#ffcc00';
+  ctx.font = `bold 13px Arial`;
+  ctx.textAlign = 'center'; ctx.textBaseline = 'bottom';
+  ctx.fillText(`${wData.ico} ${wData.name} ${'★'.repeat(bossPhase)}  HP:${Math.ceil(bossEnt.hp).toLocaleString()}`, sx, by - 3);
+}
+
+// ────────────────────────────────────────────────────────────
+// 보석
+// ────────────────────────────────────────────────────────────
+function spawnGemCenter() {
+  for (let i=0;i<30;i++) {
+    const tx = (MX/2|0) + ((Math.random()*5-2)|0);
+    const ty = (MY/2|0) + ((Math.random()*5-2)|0);
+    if (map[ty] && map[ty][tx]===T.EMPTY) {
+      gems.push({ x:tx*TS+TS/2, y:ty*TS+TS/2, alive:true, bob:Math.random()*Math.PI*2 });
+      return;
+    }
+  }
+}
+
+function updateGems(dt) {
+  gems = gems.filter(g => {
+    if (!g.alive) return false;
+    g.bob += dt*3;
+    const gsx = g.x-cam.x, gsy = g.y-cam.y;
+    // 픽업 체크
+    if (player && player.alive && Math.hypot(player.x-g.x, player.y-g.y) < 28) {
+      player.gems++;
+      score += 2;
+      g.alive = false;
+      spawnParts(g.x, g.y, '#00ff88', 6);
+      SFX.gemCollect();
+      return false;
+    }
+    for (const b of bots) {
+      if (b.alive && Math.hypot(b.x-g.x, b.y-g.y) < 28) {
+        b.gems++;
+        g.alive = false;
+        return false;
+      }
+    }
+    return true;
+  });
+}
+function drawGems() {
+  for (const g of gems) {
+    if (!g.alive) continue;
+    ctx.font = '20px serif';
+    ctx.textAlign='center'; ctx.textBaseline='middle';
+    ctx.fillText('💎', g.x-cam.x, g.y-cam.y + Math.sin(g.bob)*3);
+  }
+}
+
+// ────────────────────────────────────────────────────────────
+// 플레이어 입력
+// ────────────────────────────────────────────────────────────
+let playerAmmo = 3;
+let playerAmmoTimer = 0;
+let superCooldown = 0;
+let kenjiThrustReady = true; // 탄약 풀충전 시 찌르기, 이후 휘두르기
+let kenjiSlideState = null;  // { vx, vy, timer, maxTimer }
+
+function handlePlayerInput(dt) {
+  if (!player || !player.alive) return;
+  // 벽에 끼었으면 자동으로 밀어냄
+  const R = 10;
+  if (solid(player.x-R, player.y) || solid(player.x+R, player.y) ||
+      solid(player.x, player.y-R) || solid(player.x, player.y+R)) {
+    unstuck(player);
+  }
+  // 돌진 중엔 키 이동 무시 (updateDash에서 처리)
+  if (!dashState) {
+    let dx=0, dy=0;
+    if (joyL.active) {
+      dx = joyL.dx; dy = joyL.dy;
+    } else {
+      if (keys['ArrowLeft']||keys['a']||keys['A']) dx -= 1;
+      if (keys['ArrowRight']||keys['d']||keys['D']) dx += 1;
+      if (keys['ArrowUp']||keys['w']||keys['W'])   dy -= 1;
+      if (keys['ArrowDown']||keys['s']||keys['S']) dy += 1;
+      if (dx && dy) { dx*=0.707; dy*=0.707; }
+    }
+    moveEntity(player, dx*player.d.spd, dy*player.d.spd);
+  }
+
+  // 오른쪽 조이스틱 조준 및 자동 발사
+  if (joyR.active) {
+    const len = Math.hypot(joyR.dx, joyR.dy);
+    if (len > 0.15 && player) {
+      mouseWorld.x = player.x + joyR.dx * 300;
+      mouseWorld.y = player.y + joyR.dy * 300;
+    }
+  }
+
+  player.angle = Math.atan2(mouseWorld.y-player.y, mouseWorld.x-player.x);
+
+  // 덤불
+  const tx=player.x/TS|0, ty=player.y/TS|0;
+  player.inBush = map[ty]&&map[ty][tx]===T.BUSH;
+
+  // 쿨다운
+  // 탄약 충전 (탄약 < 3이면 자동 충전, 1개씩)
+  if (player && playerAmmo < 3) {
+    playerAmmoTimer += dt;
+    if (playerAmmoTimer >= player.d.reload) {
+      playerAmmo++;
+      playerAmmoTimer = 0;
+      if (playerAmmo === 3 && player.defKey === 'kenji') kenjiThrustReady = true;
+    }
+  }
+  if (superCooldown>0) superCooldown -= dt;
+
+  // 에드거 패시브: 시간이 지나면 슈퍼 서서히 충전 (초당 약 3%)
+  if (player.defKey === 'edgar' && !player.superReady) {
+    player.superCharge = Math.min(100, player.superCharge + dt * 3);
+    if (player.superCharge >= 100) player.superReady = true;
+  }
+}
+
+// ────────────────────────────────────────────────────────────
+// 캐릭터별 슈퍼 능력
+// ────────────────────────────────────────────────────────────
+
+// 공통: 방향의 벽 파괴
+function breakWalls(ox, oy, angle, steps, radius) {
+  for (let step = 0; step <= steps; step++) {
+    const cx = ox + Math.cos(angle) * step * TS;
+    const cy = oy + Math.sin(angle) * step * TS;
+    for (let dy2 = -Math.ceil(radius); dy2 <= Math.ceil(radius); dy2++) {
+      for (let dx2 = -Math.ceil(radius); dx2 <= Math.ceil(radius); dx2++) {
+        if (Math.hypot(dx2, dy2) > radius) continue;
+        const tx = (cx/TS|0) + dx2, ty = (cy/TS|0) + dy2;
+        if (tx<1||tx>=MX-1||ty<1||ty>=MY-1) continue;
+        if (map[ty]&&map[ty][tx]===T.WALL) {
+          map[ty][tx] = T.EMPTY;
+          spawnParts(tx*TS+TS/2, ty*TS+TS/2, '#8b6332', 7);
+          spawnParts(tx*TS+TS/2, ty*TS+TS/2, '#d4a56a', 4);
+        }
+      }
+    }
+  }
+}
+
+// 엘프리모 돌진 상태
+let dashState = null; // { vx, vy, timer, dmg }
+
+function autoAimToNearest() {
+  if (!player) return;
+  const enemies = getTargets('player');
+  if (enemies.length === 0) return;
+  const hasLOS = en => {
+    for (let i = 1; i <= 12; i++) {
+      const t = i / 12;
+      if (solid(player.x + (en.x - player.x) * t, player.y + (en.y - player.y) * t)) return false;
+    }
+    return true;
+  };
+  const visible = enemies.filter(hasLOS);
+  const pool = visible.length > 0 ? visible : enemies;
+  let nearest = pool[0], minD = Math.hypot(nearest.x - player.x, nearest.y - player.y);
+  for (const en of pool) {
+    const d = Math.hypot(en.x - player.x, en.y - player.y);
+    if (d < minD) { minD = d; nearest = en; }
+  }
+  mouseWorld.x = nearest.x;
+  mouseWorld.y = nearest.y;
+}
+
+function activateSuper() {
+  if (!player || !player.alive) return;
+  if (!player.superReady || superCooldown > 0) return;
+
+  SFX.superActivate();
+
+  const angle = Math.atan2(mouseWorld.y - player.y, mouseWorld.x - player.x);
+  const key = player.defKey;
+
+  if (key === 'shelly') {
+    // 💥 슈퍼 샷건: 넓은 산탄 + 벽 파괴
+    breakWalls(player.x, player.y, angle, 4, 1.5);
+    for (let i = 0; i < 10; i++) {
+      const a = angle + (Math.random()-.5)*0.9;
+      const b = makeBullet(player.x, player.y, Math.cos(a)*6, Math.sin(a)*6,
+        560, 'player', '#e74c3c', 'normal', 5);
+      b.life = 55; b.isSuper = true; bullets.push(b);
+    }
+    spawnParts(player.x, player.y, '#ff4444', 20);
+
+  } else if (key === 'colt') {
+    // 🔫 탄막 폭풍: 빠른 25발 연속 발사
+    for (let i = 0; i < 25; i++) {
+      setTimeout(() => {
+        if (!player||!player.alive) return;
+        const a = angle + (Math.random()-.5)*0.04;
+        const b = makeBullet(player.x, player.y, Math.cos(a)*12, Math.sin(a)*12,
+          480, 'player', '#3498db', 'normal', 5);
+        b.life = 55; b.isSuper = true; bullets.push(b);
+        spawnParts(player.x, player.y, '#3498db', 3);
+      }, i * 80);
+    }
+
+  } else if (key === 'elprimo') {
+    // 🚀 엘보 드롭: 마우스 위치로 날아가서 착지 충격파
+    const originX = player.x, originY = player.y;
+    // 마우스 위치로 텔레포트 (맵 범위 제한)
+    let tx2 = Math.max(TS*1.5, Math.min(MX*TS-TS*1.5, mouseWorld.x));
+    let ty2 = Math.max(TS*1.5, Math.min(MY*TS-TS*1.5, mouseWorld.y));
+    // 착지 위치가 벽이면 가장 가까운 빈 곳으로
+    if (solid(tx2, ty2)) {
+      const sp = safeSpawn('any'); tx2 = sp.x; ty2 = sp.y;
+    }
+    // 출발지 파티클
+    spawnParts(originX, originY, '#9b59b6', 20);
+    // 경로 중간 파티클 (날아가는 효과)
+    for (let step = 0; step <= 6; step++) {
+      const px = originX + (tx2 - originX) * step / 6;
+      const py = originY + (ty2 - originY) * step / 6;
+      spawnParts(px, py, '#ce93d8', 3);
+    }
+    // 이동
+    player.x = tx2; player.y = ty2;
+    unstuck(player);
+    // 착지 충격파: 주변 벽 파괴
+    breakWalls(player.x, player.y, angle, 3, 1.2);
+    // 착지 지점 주변 적에게 광역 데미지
+    const impactRange = TS * 3; // 120px 범위
+    const allTEl = getTargets('player');
+    for (const t of allTEl) {
+      if (!t.alive) continue;
+      const dist = Math.hypot(t.x - player.x, t.y - player.y);
+      if (dist < impactRange) {
+        damage(t, 1400 * (1 - dist / impactRange * 0.4), player, true);
+        checkKill(t, 'player');
+      }
+    }
+    // 하이스트: 착지 범위 내 금고에도 데미지
+    if (selMode === 'heist' && heistHp) {
+      if (Math.hypot(player.x - HEIST_ENEMY_VAULT.x, player.y - HEIST_ENEMY_VAULT.y) < impactRange) {
+        heistHp.enemy -= 1400;
+        spawnParts(HEIST_ENEMY_VAULT.x, HEIST_ENEMY_VAULT.y, '#ff4444', 8);
+        if (heistHp.enemy <= 0) { endGame(true); return; }
+      }
+    }
+    // 착지 이펙트
+    spawnParts(player.x, player.y, '#9b59b6', 30);
+    spawnParts(player.x, player.y, '#ffffff', 15);
+
+  } else if (key === 'barley') {
+    // 🍺 라스트 콜: 마우스 방향 중심으로 부채꼴 5발 투척 (강화 데미지 + 넓은 폭발)
+    // 마우스까지의 거리 기반으로 비행 시간 결정
+    const targetDist = Math.max(80, Math.hypot(mouseWorld.x - player.x, mouseWorld.y - player.y));
+    for (let i = 0; i < 5; i++) {
+      const a = angle + (i - 2) * 0.28; // 마우스 방향 중심으로 부채꼴
+      const ttime = Math.max(20, Math.min(70, targetDist / 7));
+      const spd = targetDist / ttime;
+      const b = makeBullet(player.x, player.y, Math.cos(a)*spd, Math.sin(a)*spd,
+        700, 'player', '#ff6600', 'lob', 11);
+      b.lobLife = ttime; b.lobMax = ttime; b.lobRadius = TS*3.0;
+      b.isSuper = true; bullets.push(b);
+    }
+    spawnParts(player.x, player.y, '#ff6600', 20);
+    spawnParts(player.x, player.y, '#ffcc00', 10);
+
+  } else if (key === 'piper') {
+    // 🌸 핫에어: 마우스 반대 방향으로 점프 + 발밑 폭발
+    const jumpAngle = angle + Math.PI; // 반대 방향
+    const jumpDist  = 200;
+    // 점프 (벽 통과 금지: 중간 지점도 체크)
+    let jx = Math.max(TS, Math.min(MX*TS-TS, player.x + Math.cos(jumpAngle)*jumpDist));
+    let jy = Math.max(TS, Math.min(MY*TS-TS, player.y + Math.sin(jumpAngle)*jumpDist));
+    // 착지 위치가 벽이면 안전한 위치 찾기
+    if (solid(jx, jy)) { const sp=safeSpawn('any'); jx=sp.x; jy=sp.y; }
+    player.x = jx; player.y = jy;
+    // 벽에 끼었으면 밀어냄
+    unstuck(player);
+    // 원래 위치에 폭발
+    const ex = player.x - Math.cos(jumpAngle)*jumpDist;
+    const ey = player.y - Math.sin(jumpAngle)*jumpDist;
+    spawnParts(ex, ey, '#e91e63', 25);
+    spawnParts(player.x, player.y, '#ffaacc', 15);
+    // 원래 위치 주변 적에게 데미지
+    const allT = getTargets('player');
+    for (const t of allT) {
+      if (!t.alive) continue;
+      const d = Math.hypot(t.x-ex, t.y-ey);
+      if (d < TS*3) { damage(t, 1400, player, true); checkKill(t, 'player'); }
+    }
+
+  } else if (key === 'bull') {
+    // 💨 인피니트 암모: 빠른 돌진 + 경로 벽 파괴 + 연속 산탄
+    dashState = {
+      vx: Math.cos(angle) * 14,
+      vy: Math.sin(angle) * 14,
+      timer: 18,
+      dmg: 800,
+      hit: new Set(),
+      isBull: true,
+      angle,
+      shootTimer: 0
+    };
+    breakWalls(player.x, player.y, angle, 7, 1.2);
+    spawnParts(player.x, player.y, '#795548', 20);
+
+  } else if (key === 'edgar') {
+    // 🦘 레츠플라이: 마우스 위치로 높이 도약 + 착지 근접 데미지 + 순간 체력 회복
+    const originX = player.x, originY = player.y;
+    let ex = Math.max(TS*1.5, Math.min(MX*TS-TS*1.5, mouseWorld.x));
+    let ey = Math.max(TS*1.5, Math.min(MY*TS-TS*1.5, mouseWorld.y));
+    if (solid(ex, ey)) { const sp = safeSpawn('any'); ex = sp.x; ey = sp.y; }
+    // 도약 경로 파티클 (보라→검정)
+    spawnParts(originX, originY, '#7c4dff', 20);
+    for (let step = 0; step <= 5; step++) {
+      const px2 = originX + (ex - originX) * step / 5;
+      const py2 = originY + (ey - originY) * step / 5;
+      spawnParts(px2, py2, '#2c2c54', 3);
+    }
+    // 이동
+    player.x = ex; player.y = ey;
+    unstuck(player);
+    // 착지 순간 체력 회복 (최대체력의 30%)
+    { const h = Math.min(player.maxHp - player.hp, player.maxHp * 0.30); player.hp += h; player.totalHealing += h; }
+    player.regenTimer = 0;
+    // 착지 주변 적에게 근접 데미지
+    const edgarRange = TS * 2.5;
+    const allTEdgar = getTargets('player');
+    for (const t of allTEdgar) {
+      if (!t.alive) continue;
+      const dist = Math.hypot(t.x - player.x, t.y - player.y);
+      if (dist < edgarRange) {
+        damage(t, 1000 * (1 - dist / edgarRange * 0.5), player, true);
+        checkKill(t, 'player');
+      }
+    }
+    // 착지 이펙트
+    spawnParts(player.x, player.y, '#7c4dff', 25);
+    spawnParts(player.x, player.y, '#ffffff', 10);
+
+  } else if (key === 'nita') {
+    // 🐻 곰 소환: 마우스 위치에 강한 근접 봇 일시 소환
+    const bx2 = Math.max(TS, Math.min(MX*TS-TS, mouseWorld.x));
+    const by2 = Math.max(TS, Math.min(MY*TS-TS, mouseWorld.y));
+    const bearEnt = makeEntity(bx2, by2, 'elprimo', 'ally');
+    bearEnt.hp = bearEnt.maxHp = 10000;
+    bearEnt.d = Object.assign({}, bearEnt.d, { ico:'🐻', color:'#8d6e63', name:'곰', spd:3.5, dmg:900 });
+    bearEnt._tempBot = true; bearEnt._noflee = true;
+    bearEnt._tempLife = 12; // 12초 후 제거
+    bots.push(bearEnt);
+    spawnParts(bx2, by2, '#8d6e63', 20);
+
+  } else if (key === 'spike') {
+    // 🌵 슈퍼 가시: 광역 가시 폭발
+    for (let i = 0; i < 8; i++) {
+      const a = (Math.PI*2/8)*i;
+      const b = makeBullet(player.x, player.y, Math.cos(a)*5, Math.sin(a)*5,
+        900, 'player', '#66bb6a', 'spike', 8);
+      b.life = 80; b.isSuper = true; bullets.push(b);
+    }
+    spawnParts(player.x, player.y, '#66bb6a', 25);
+
+  } else if (key === 'crow') {
+    // 🦅 초고속 도약 + 도약 중 침 발사 + 착지 시 침 발사
+    const fromX = player.x, fromY = player.y;
+    let jx = Math.max(TS, Math.min(MX*TS-TS, mouseWorld.x));
+    let jy = Math.max(TS, Math.min(MY*TS-TS, mouseWorld.y));
+    if (solid(jx, jy)) { const sp=safeSpawn('any'); jx=sp.x; jy=sp.y; }
+    spawnParts(fromX, fromY, '#1a237e', 15);
+    // 도약 중: 8방향으로 독침 발사
+    for (let i = 0; i < 8; i++) {
+      const a = (Math.PI * 2 / 8) * i;
+      const spd = 7;
+      const b = makeBullet(fromX, fromY, Math.cos(a)*spd, Math.sin(a)*spd,
+        player.d.dmg * 1.5, 'player', player.d.color, 'normal', 5);
+      b.life = 220 / spd;
+      b.poison = true; b.isSuper = true;
+      bullets.push(b);
+    }
+    player.x = jx; player.y = jy;
+    unstuck(player);
+    // 착지: 8방향으로 독침 발사
+    for (let i = 0; i < 8; i++) {
+      const a = (Math.PI * 2 / 8) * i;
+      const spd = 7;
+      const b = makeBullet(player.x, player.y, Math.cos(a)*spd, Math.sin(a)*spd,
+        player.d.dmg * 1.5, 'player', player.d.color, 'normal', 5);
+      b.life = 220 / spd;
+      b.poison = true; b.isSuper = true;
+      bullets.push(b);
+    }
+    SFX.superActivate();
+    spawnParts(player.x, player.y, '#5c6bc0', 20);
+
+  } else if (key === 'mortis') {
+    // 🧛 흡혈: 마우스 방향 돌진 + 체력 흡수
+    const dashDist = 180;
+    let dx3 = Math.max(TS, Math.min(MX*TS-TS, player.x + Math.cos(angle)*dashDist));
+    let dy3 = Math.max(TS, Math.min(MY*TS-TS, player.y + Math.sin(angle)*dashDist));
+    if (solid(dx3, dy3)) { const sp=safeSpawn('any'); dx3=sp.x; dy3=sp.y; }
+    spawnParts(player.x, player.y, '#4a148c', 15);
+    player.x = dx3; player.y = dy3;
+    unstuck(player);
+    let healed = 0;
+    for (const t of getTargets('player')) {
+      if (!t.alive) continue;
+      const d3 = Math.hypot(t.x-player.x, t.y-player.y);
+      if (d3 < TS*3) {
+        const dmg3 = 1200;
+        damage(t, dmg3, player, true); checkKill(t, 'player');
+        healed += dmg3 * 0.4;
+      }
+    }
+    { const h = Math.min(player.maxHp - player.hp, healed); player.hp += h; player.totalHealing += h; }
+    spawnParts(player.x, player.y, '#e91e63', 20);
+
+  } else if (key === 'penny') {
+    // 💣 대포 설치: 마우스 위치에 고정 포탑 소환 (8초)
+    const px2 = Math.max(TS, Math.min(MX*TS-TS, mouseWorld.x));
+    const py2 = Math.max(TS, Math.min(MY*TS-TS, mouseWorld.y));
+    const turret = makeEntity(px2, py2, 'penny', 'ally');
+    turret.hp = turret.maxHp = 3000;
+    turret.d = Object.assign({}, turret.d, { ico:'💣', color:'#f57f17', name:'대포', spd:0, dmg:600, range:380, reload:1.5, atk:'lob' });
+    turret._tempBot = true;
+    turret._tempLife = 8;
+    turret._turret = true;
+    bots.push(turret);
+    spawnParts(px2, py2, '#f57f17', 20);
+
+  } else if (key === 'gene') {
+    // 🪄 마법 손: 마우스 방향 적 끌어당김
+    const geneTargets = getTargets('player');
+    let pulled = null, pullDist = Infinity;
+    for (const t of geneTargets) {
+      if (!t.alive) continue;
+      const d4 = Math.hypot(t.x-player.x, t.y-player.y);
+      if (d4 < 500 && d4 < pullDist) { pullDist=d4; pulled=t; }
+    }
+    if (pulled) {
+      pulled.x = player.x + Math.cos(angle)*TS*1.5;
+      pulled.y = player.y + Math.sin(angle)*TS*1.5;
+      unstuck(pulled);
+      damage(pulled, 800, player, true); checkKill(pulled, 'player');
+      spawnParts(pulled.x, pulled.y, '#7b1fa2', 20);
+    }
+    spawnParts(player.x, player.y, '#ce93d8', 15);
+
+  } else if (key === 'tara') {
+    // 🌀 블랙홀: 마우스 위치 근방 적 집결 + 데미지
+    const bx3 = mouseWorld.x, by3 = mouseWorld.y;
+    spawnParts(bx3, by3, '#880e4f', 30);
+    for (const t of getTargets('player')) {
+      if (!t.alive) continue;
+      const d5 = Math.hypot(t.x-bx3, t.y-by3);
+      if (d5 < TS*5) {
+        t.x = bx3 + (Math.random()-0.5)*TS;
+        t.y = by3 + (Math.random()-0.5)*TS;
+        unstuck(t);
+        damage(t, 600 + (1 - d5/(TS*5))*800, player, true);
+        checkKill(t, 'player');
+        spawnParts(t.x, t.y, '#e91e63', 8);
+      }
+    }
+
+  } else if (key === 'frank') {
+    // 🔨 대형 해머: 전방 광역 기절+데미지
+    for (let i = 0; i < 6; i++) {
+      const a = angle + (i - 2.5)*0.25;
+      const b = makeBullet(player.x, player.y, Math.cos(a)*4, Math.sin(a)*4,
+        500, 'player', '#546e7a', 'melee', 35);
+      b.life = 25; b.isSuper = true; bullets.push(b);
+    }
+    spawnParts(player.x, player.y, '#546e7a', 25);
+
+  } else if (key === 'bo') {
+    // 🏹 파워 화살: 1발 투척 (벽 넘음, 초고데미지)
+    {
+      const dist5 = Math.max(80, Math.hypot(mouseWorld.x-player.x, mouseWorld.y-player.y));
+      const ttime = Math.max(25, Math.min(70, dist5/7));
+      const spd = dist5/ttime;
+      const b = makeBullet(player.x, player.y, Math.cos(angle)*spd, Math.sin(angle)*spd,
+        Math.round(player.d.dmg * 8 * (1 + (player.dmgBonus||0))), 'player', '#ffd54f', 'lob', 14);
+      b.life = 0; b.lobLife = ttime; b.lobMax = ttime; b.lobRadius = TS*2.2;
+      b.isSuper = true; bullets.push(b);
+    }
+    spawnParts(player.x, player.y, '#ffd54f', 20);
+
+  } else if (key === 'rico') {
+    // 🎱 슈퍼 반사: 15발 연속 고데미지 반사 탄환
+    for (let i = 0; i < 15; i++) {
+      setTimeout(() => {
+        if (!player||!player.alive) return;
+        const a = angle + (Math.random()-0.5)*0.12;
+        const b = makeBullet(player.x, player.y, Math.cos(a)*11, Math.sin(a)*11,
+          800, 'player', '#0097a7', 'bounce', 7);
+        b.life = 90; b.bounces = 5; b.ricoShot = true; b.isSuper = true; bullets.push(b);
+        spawnParts(player.x, player.y, '#0097a7', 3);
+      }, i*60);
+    }
+
+  } else if (key === 'jessie') {
+    // 🤖 스크루볼트: 터렛 소환 (10초, 자동 공격)
+    const jx2 = Math.max(TS, Math.min(MX*TS-TS, mouseWorld.x));
+    const jy2 = Math.max(TS, Math.min(MY*TS-TS, mouseWorld.y));
+    const turret2 = makeEntity(jx2, jy2, 'jessie', 'ally');
+    turret2.hp = turret2.maxHp = 2500;
+    turret2.d = Object.assign({}, turret2.d, { ico:'🤖', color:'#f9a825', name:'터렛', spd:0, dmg:400, range:320, reload:1.0, atk:'bounce' });
+    turret2._tempBot = true;
+    turret2._tempLife = 10;
+    turret2._turret = true;
+    bots.push(turret2);
+    spawnParts(jx2, jy2, '#f9a825', 20);
+
+  } else if (key === 'gon') {
+    // 👊 재잰켄 바위: 마우스 방향으로 바위 날리기 → 착지 광역 강타 + 벽 파괴 (고정 사거리 4칸)
+    const gonRange = TS * 4;
+    const gonLandX = Math.max(TS*1.5, Math.min(MX*TS-TS*1.5, player.x + Math.cos(angle) * gonRange));
+    const gonLandY = Math.max(TS*1.5, Math.min(MY*TS-TS*1.5, player.y + Math.sin(angle) * gonRange));
+    const gonRadius = TS * 3.5;
+    // 발사 파티클
+    spawnParts(player.x, player.y, '#4caf50', 20);
+    for (let step = 1; step <= 5; step++) {
+      const px = player.x + (gonLandX - player.x) * step / 5;
+      const py = player.y + (gonLandY - player.y) * step / 5;
+      spawnParts(px, py, '#a5d6a7', 4);
+    }
+    // 착지 충격
+    breakWalls(gonLandX, gonLandY, angle, 3, 2.0);
+    const allT2 = getTargets('player');
+    for (const t of allT2) {
+      if (!t.alive) continue;
+      const dist = Math.hypot(t.x - gonLandX, t.y - gonLandY);
+      if (dist < gonRadius) {
+        damage(t, 1600, player, true);
+        checkKill(t, 'player');
+        // 넉백 (착지 지점 기준)
+        const nx = (t.x - gonLandX) / (dist || 1);
+        const ny = (t.y - gonLandY) / (dist || 1);
+        t.x = Math.max(TS, Math.min(MX*TS-TS, t.x + nx * 80));
+        t.y = Math.max(TS, Math.min(MY*TS-TS, t.y + ny * 80));
+      }
+    }
+    spawnParts(gonLandX, gonLandY, '#4caf50', 40);
+    spawnParts(gonLandX, gonLandY, '#ffffff', 20);
+
+  } else if (key === 'dynamike') {
+    // 💥 빅 붐: 초대형 폭탄
+    const tdist = Math.max(80, Math.hypot(mouseWorld.x-player.x, mouseWorld.y-player.y));
+    const ttime2 = Math.max(20, Math.min(70, tdist/6));
+    const b2 = makeBullet(player.x, player.y,
+      (mouseWorld.x-player.x)/ttime2, (mouseWorld.y-player.y)/ttime2,
+      1400, 'player', '#ff6f00', 'lob', 18);
+    b2.lobLife = ttime2; b2.lobMax = ttime2; b2.lobRadius = TS*4.5;
+    b2.isSuper = true; bullets.push(b2);
+    spawnParts(player.x, player.y, '#ff6f00', 15);
+
+  } else if (key === '8bit') {
+    // ⬆️ 데미지 부스터: 마우스 위치에 포탑 설치, 반경 내 아군 50% 강화
+    const bx = Math.max(TS, Math.min(MX*TS-TS, mouseWorld.x));
+    const by = Math.max(TS, Math.min(MY*TS-TS, mouseWorld.y));
+    damageBooster = { x: bx, y: by, hp: 4000, maxHp: 4000, team: 'player' };
+    spawnParts(bx, by, '#e53935', 25);
+
+  } else if (key === 'sandy') {
+    // 🌪️ 모래嵐: 자신+아군 팀 5초 은신
+    sandyBuff = { timer: 5 };
+    spawnParts(player.x, player.y, '#fdd835', 25);
+
+  } else if (key === 'leorio') {
+    // 👊 포털 폭발: 마우스 위치에 즉시 강력한 넨 폭발
+    const lx = Math.max(TS, Math.min(MX*TS-TS, mouseWorld.x));
+    const ly = Math.max(TS, Math.min(MY*TS-TS, mouseWorld.y));
+    const lRadius = TS * 5.5;
+    spawnParts(lx, ly, '#1565c0', 55);
+    spawnParts(lx, ly, '#ffffff', 30);
+    spawnParts(lx, ly, '#42a5f5', 20);
+    // 폭발 범위 내 벽 전부 파괴
+    const lwR = Math.ceil(lRadius / TS) + 1;
+    for (let dy = -lwR; dy <= lwR; dy++) {
+      for (let dx = -lwR; dx <= lwR; dx++) {
+        if (Math.hypot(dx, dy) * TS > lRadius) continue;
+        const wtx = (lx/TS|0) + dx, wty = (ly/TS|0) + dy;
+        if (wtx<1||wtx>=MX-1||wty<1||wty>=MY-1) continue;
+        if (map[wty]&&map[wty][wtx]===T.WALL) {
+          map[wty][wtx] = T.EMPTY;
+          spawnParts(wtx*TS+TS/2, wty*TS+TS/2, '#8b6332', 6);
+          spawnParts(wtx*TS+TS/2, wty*TS+TS/2, '#d4a56a', 3);
+        }
+      }
+    }
+    for (const t of getTargets('player')) {
+      if (!t.alive) continue;
+      const ld = Math.hypot(t.x - lx, t.y - ly);
+      if (ld < lRadius) {
+        damage(t, 3500 * (1 - ld / lRadius * 0.3), player, true);
+        checkKill(t, 'player');
+        const ln = (t.x - lx) / (ld || 1);
+        const ly2 = (t.y - ly) / (ld || 1);
+        t.x = Math.max(TS, Math.min(MX*TS-TS, t.x + ln * 130));
+        t.y = Math.max(TS, Math.min(MY*TS-TS, t.y + ly2 * 130));
+        spawnParts(t.x, t.y, '#1565c0', 14);
+      }
+    }
+
+  } else if (key === 'kurapika') {
+    // ⛓ 체인 감옥: 가까운 적 최대 4명을 플레이어에게 끌어당기고 큰 데미지
+    const kTargets = getTargets('player')
+      .filter(t => t.alive && Math.hypot(t.x-player.x, t.y-player.y) < TS*7)
+      .sort((a,b) => Math.hypot(a.x-player.x,a.y-player.y) - Math.hypot(b.x-player.x,b.y-player.y))
+      .slice(0, 4);
+    for (const t of kTargets) {
+      spawnParts(t.x, t.y, '#c62828', 10);
+      t.x = player.x + (Math.random()-0.5)*TS*1.5;
+      t.y = player.y + (Math.random()-0.5)*TS*1.5;
+      unstuck(t);
+      damage(t, 1500, player, true);
+      checkKill(t, 'player');
+      spawnParts(t.x, t.y, '#ef9a9a', 12);
+    }
+    spawnParts(player.x, player.y, '#c62828', 25);
+
+  } else if (key === 'killua') {
+    // ⚡ 갓스피드: 마우스 위치로 순간이동 + 도착 지점 전격 범위 데미지
+    const klx = Math.max(TS, Math.min(MX*TS-TS, mouseWorld.x));
+    const kly = Math.max(TS, Math.min(MY*TS-TS, mouseWorld.y));
+    spawnParts(player.x, player.y, '#90a4ae', 15);
+    player.x = klx; player.y = kly;
+    unstuck(player);
+    spawnParts(player.x, player.y, '#ffffff', 20);
+    spawnParts(player.x, player.y, '#90a4ae', 15);
+    for (const t of getTargets('player')) {
+      if (!t.alive) continue;
+      const kd = Math.hypot(t.x-player.x, t.y-player.y);
+      if (kd < TS*4) {
+        damage(t, 3500, player, true);
+        checkKill(t, 'player');
+        spawnParts(t.x, t.y, '#b0bec5', 10);
+      }
+    }
+
+  } else if (key === 'darkking') {
+    // 💀 어둠의 충격파: 전방위 폭발
+    const dkRadius = TS * 5;
+    spawnParts(player.x, player.y, '#8b0000', 40);
+    spawnParts(player.x, player.y, '#ff4444', 20);
+    for (let i = 0; i < 16; i++) {
+      const a = (Math.PI*2/16)*i;
+      const b = makeBullet(player.x, player.y, Math.cos(a)*8, Math.sin(a)*8,
+        1800, 'player', '#8b0000', 'normal', 6);
+      b.life = 50; b.isSuper = true; bullets.push(b);
+    }
+    for (const t of getTargets('player')) {
+      if (!t.alive) continue;
+      const dd = Math.hypot(t.x-player.x, t.y-player.y);
+      if (dd < dkRadius) {
+        damage(t, 2000*(1-dd/dkRadius*0.4), player, true);
+        checkKill(t, 'player');
+        spawnParts(t.x, t.y, '#8b0000', 8);
+      }
+    }
+
+  } else if (key === 'skullking') {
+    // 🦴 뼈의 폭풍: 넓은 산탄 폭발
+    for (let i = 0; i < 14; i++) {
+      const a = angle + (Math.random()-0.5)*1.2;
+      const b = makeBullet(player.x, player.y, Math.cos(a)*9, Math.sin(a)*9, 1800, 'player', '#37474f', 'normal', 6);
+      b.life = 55; b.isSuper = true; bullets.push(b);
+    }
+    spawnParts(player.x, player.y, '#37474f', 30);
+
+  } else if (key === 'flamelord') {
+    // 🔥 화염 폭풍: 연속 투척
+    for (let i = 0; i < 5; i++) {
+      setTimeout(() => {
+        if (!player||!player.alive) return;
+        const a = angle + (Math.random()-0.5)*0.4;
+        const tdist = Math.max(80, Math.hypot(mouseWorld.x-player.x, mouseWorld.y-player.y));
+        const ttime = Math.max(20, Math.min(60, tdist/6));
+        const b = makeBullet(player.x, player.y, (mouseWorld.x-player.x)/ttime, (mouseWorld.y-player.y)/ttime, 2200, 'player', '#e65100', 'lob', 16);
+        b.vx += Math.cos(a)*0.5; b.vy += Math.sin(a)*0.5;
+        b.lobLife = ttime; b.lobMax = ttime; b.lobRadius = TS*3.5; b.isSuper = true; bullets.push(b);
+      }, i*150);
+    }
+    spawnParts(player.x, player.y, '#e65100', 25);
+
+  } else if (key === 'lightning') {
+    // ⚡ 번개 폭발: 마우스 위치로 순간이동 + 도착지점에서 8방향 번개탄
+    const lx = Math.max(TS, Math.min(MX*TS-TS, mouseWorld.x));
+    const ly = Math.max(TS, Math.min(MY*TS-TS, mouseWorld.y));
+    spawnParts(player.x, player.y, '#1a237e', 15); // 출발 파티클만 (탄 없음)
+    player.x = lx; player.y = ly; unstuck(player);
+    spawnParts(player.x, player.y, '#ffe57f', 30);
+    spawnParts(player.x, player.y, '#1a237e', 20);
+    // 도착지점에서 8방향으로 발사
+    for (let i = 0; i < 8; i++) {
+      const a = (Math.PI * 2 / 8) * i;
+      const b = makeBullet(player.x, player.y, Math.cos(a)*12, Math.sin(a)*12, 2000, 'player', '#ffe57f', 'bounce', 7);
+      b.life = 100; b.bounces = 7; b.ricoShot = true; b.isSuper = true; bullets.push(b);
+    }
+
+  } else if (key === 'finaldemon') {
+    // 😈 지옥문: 극한 광역 폭발
+    const fdRadius = TS * 8;
+    spawnParts(player.x, player.y, '#4a0080', 60);
+    spawnParts(player.x, player.y, '#ff1744', 30);
+    for (const t of getTargets('player')) {
+      if (!t.alive) continue;
+      const fd = Math.hypot(t.x-player.x, t.y-player.y);
+      if (fd < fdRadius) {
+        damage(t, 4000*(1-fd/fdRadius*0.3), player, true);
+        checkKill(t, 'player');
+        spawnParts(t.x, t.y, '#4a0080', 12);
+      }
+    }
+    for (let i = 0; i < 20; i++) {
+      const a = (Math.PI*2/20)*i;
+      const b = makeBullet(player.x, player.y, Math.cos(a)*10, Math.sin(a)*10, 2500, 'player', '#4a0080', 'normal', 7);
+      b.life = 65; b.isSuper = true; bullets.push(b);
+    }
+
+  } else if (key === 'kenji') {
+    // ❌ 환영 참격: 마우스 위치로 날아가 X자 4방향 공격 후 원래 자리 귀환
+    const ox = player.x, oy = player.y;
+    let tx2 = Math.max(TS, Math.min(MX*TS-TS, mouseWorld.x));
+    let ty2 = Math.max(TS, Math.min(MY*TS-TS, mouseWorld.y));
+    if (solid(tx2, ty2)) { const sp = safeSpawn('any'); tx2 = sp.x; ty2 = sp.y; }
+    spawnParts(ox, oy, '#9c27b0', 15);
+    player.x = tx2; player.y = ty2;
+    unstuck(player);
+    spawnParts(player.x, player.y, '#e040fb', 30);
+    // X자 4방향 (대각선) 검기
+    const xAngles = [Math.PI*0.25, Math.PI*0.75, Math.PI*1.25, Math.PI*1.75];
+    for (const xa of xAngles) {
+      const b = makeBullet(player.x, player.y, Math.cos(xa)*14, Math.sin(xa)*14,
+        player.d.dmg * 8, 'player', '#9c27b0', 'normal', 13);
+      b.life = 45; b.isSuper = true; bullets.push(b);
+    }
+    // 150ms 후 원래 자리로 귀환
+    setTimeout(() => {
+      if (!player || !player.alive) return;
+      spawnParts(player.x, player.y, '#9c27b0', 12);
+      player.x = ox; player.y = oy;
+      unstuck(player);
+      spawnParts(player.x, player.y, '#e040fb', 18);
+    }, 400);
+
+  } else if (key === 'sirius') {
+    // 🔮 분신술: 마우스 위치 주변에 분신 3개 소환 (8초)
+    const cloneOffsets = [
+      { x: -TS*2, y: 0 }, { x: TS*2, y: 0 }, { x: 0, y: -TS*2 }
+    ];
+    for (const off of cloneOffsets) {
+      let cx = Math.max(TS, Math.min(MX*TS-TS, mouseWorld.x + off.x));
+      let cy = Math.max(TS, Math.min(MY*TS-TS, mouseWorld.y + off.y));
+      if (solid(cx, cy)) { const sp = safeSpawn('any'); cx = sp.x; cy = sp.y; }
+      const clone = makeEntity(cx, cy, 'sirius', 'ally');
+      unstuck(clone);
+      clone.hp = clone.maxHp = Math.round(player.maxHp * 0.6);
+      clone.d = Object.assign({}, clone.d, { ico:'🌟', name:'분신', dmg: Math.round(player.d.dmg * 0.8) });
+      clone._tempBot = true; clone._tempLife = 8; clone._noflee = true;
+      bots.push(clone);
+      spawnParts(cx, cy, '#7b1fa2', 20);
+    }
+    spawnParts(player.x, player.y, '#e040fb', 35);
+
+  } else if (key === 'mystery') {
+    // 💥 극한 반사 폭풍: 리코 슈퍼 6배 (90발, 13200데미지, 9바운스)
+    for (let i = 0; i < 90; i++) {
+      setTimeout(() => {
+        if (!player || !player.alive) return;
+        const a = angle + (Math.random()-0.5)*0.35;
+        const b = makeBullet(player.x, player.y, Math.cos(a)*15, Math.sin(a)*15,
+          13200, 'player', '#b71c1c', 'bounce', 9);
+        b.life = 140; b.bounces = 9; b.ricoShot = true; b.isSuper = true; bullets.push(b);
+        spawnParts(player.x, player.y, '#b71c1c', 2);
+        SFX.shoot('bounce');
+      }, i*40);
+    }
+
+  } else if (key === 'hisoka') {
+    // 🩷 번지검: 주변 전체 5000 고정 데미지
+    const hRadius = TS * 6;
+    spawnParts(player.x, player.y, '#7e57c2', 30);
+    for (const t of getTargets('player')) {
+      if (!t.alive) continue;
+      const hd = Math.hypot(t.x-player.x, t.y-player.y);
+      if (hd < hRadius) {
+        damage(t, 5000, player, true);
+        checkKill(t, 'player');
+        spawnParts(t.x, t.y, '#ce93d8', 8);
+      }
+    }
+
+  } else if (key === 'feitan') {
+    // 💊 치유 포탑: 마우스 위치에 설치, 반경 내 아군 0.5초마다 체력 회복
+    const fx = Math.max(TS, Math.min(MX*TS-TS, mouseWorld.x));
+    const fy = Math.max(TS, Math.min(MY*TS-TS, mouseWorld.y));
+    healTurret = { x: fx, y: fy, hp: 5000, maxHp: 5000, team: 'player', healTimer: 0 };
+    spawnParts(fx, fy, '#4caf50', 30);
+  }
+
+  player.superCharge = 0;
+  player.superReady  = false;
+  superCooldown = 0.3;
+}
+
+// 켄지 찌르기 슬라이드 업데이트
+function updateKenjiSlide(dt) {
+  if (!kenjiSlideState) return;
+  kenjiSlideState.timer -= 60 * dt;
+  const ratio = Math.max(0, kenjiSlideState.timer / kenjiSlideState.maxTimer);
+  const spd = ratio; // 감속: 처음엔 빠르고 점점 느려짐
+  const nx = player.x + kenjiSlideState.vx * spd;
+  const ny = player.y + kenjiSlideState.vy * spd;
+  const R = 12;
+  if (!solid(nx-R,player.y-R)&&!solid(nx+R,player.y-R)&&!solid(nx-R,player.y+R)&&!solid(nx+R,player.y+R))
+    player.x = Math.max(R, Math.min(MX*TS-R, nx));
+  if (!solid(player.x-R,ny-R)&&!solid(player.x+R,ny-R)&&!solid(player.x-R,ny+R)&&!solid(player.x+R,ny+R))
+    player.y = Math.max(R, Math.min(MY*TS-R, ny));
+  spawnParts(player.x, player.y, '#9c27b0', 1);
+  if (kenjiSlideState.timer <= 0) kenjiSlideState = null;
+}
+
+// 돌진 업데이트 (루프에서 호출)
+function updateDash(dt) {
+  if (!dashState) return;
+  dashState.timer -= 60*dt;
+
+  // 이동
+  const nx = player.x + dashState.vx;
+  const ny = player.y + dashState.vy;
+  const R = 12;
+  if (!solid(nx-R,player.y-R)&&!solid(nx+R,player.y-R)&&!solid(nx-R,player.y+R)&&!solid(nx+R,player.y+R))
+    player.x = Math.max(R, Math.min(MX*TS-R, nx));
+  if (!solid(player.x-R,ny-R)&&!solid(player.x+R,ny-R)&&!solid(player.x-R,ny+R)&&!solid(player.x+R,ny+R))
+    player.y = Math.max(R, Math.min(MY*TS-R, ny));
+
+  // 돌진 중 적 히트
+  const allT = getTargets('player');
+  for (const t of allT) {
+    if (!t.alive || dashState.hit.has(t)) continue;
+    if (Math.hypot(t.x-player.x, t.y-player.y) < 40) {
+      damage(t, dashState.dmg, player, true);
+      checkKill(t, 'player');
+      dashState.hit.add(t);
+      spawnParts(player.x, player.y, '#fff', 8);
+    }
+  }
+
+  // 불: 돌진 중 산탄 발사
+  if (dashState.isBull) {
+    dashState.shootTimer -= 60*dt;
+    if (dashState.shootTimer <= 0) {
+      dashState.shootTimer = 8;
+      for (let i=0;i<3;i++) {
+        const a = dashState.angle + (Math.random()-.5)*0.5;
+        const b = makeBullet(player.x, player.y, Math.cos(a)*7, Math.sin(a)*7,
+          300, 'player', '#795548', 'normal', 4);
+        b.life = 20; bullets.push(b);
+      }
+    }
+  }
+
+  spawnParts(player.x, player.y, player.d.color, 2);
+
+  if (dashState.timer <= 0) dashState = null;
+}
+
+function tryShoot(isSuper) {
+  if (!player || !player.alive) return;
+  if (state !== 'playing') return;
+  if (isSuper) {
+    activateSuper();
+  } else {
+    // 브롤볼: 공을 들고 있거나 근처에 있으면 마우스 방향으로 킥
+    if (selMode === 'brawlball' && brawlBall) {
+      const distToBall = Math.hypot(player.x - brawlBall.x, player.y - brawlBall.y);
+      const holding = brawlBall.holder === player;
+      if (holding || distToBall < 80) {
+        if (playerAmmo > 0) {
+          const dx = mouseWorld.x - player.x;
+          const dy = mouseWorld.y - player.y;
+          const dist = Math.sqrt(dx*dx + dy*dy) || 1;
+          brawlBall.holder = null;
+          brawlBall.vx = (dx/dist) * 10;
+          brawlBall.vy = (dy/dist) * 10;
+          playerAmmo--;
+          if (playerAmmo < 3 && playerAmmoTimer === 0) playerAmmoTimer = 0;
+          SFX.shoot('normal');
+        }
+        return;
+      }
+    }
+    if (playerAmmo > 0) {
+      if (player.defKey === 'mystery') {
+        // ❓ 일반공격: 리코 슈퍼와 동일 (15발 고속 반사탄)
+        const capX = mouseWorld.x, capY = mouseWorld.y;
+        for (let i = 0; i < 15; i++) {
+          setTimeout(() => {
+            if (!player || !player.alive) return;
+            const a = Math.atan2(capY - player.y, capX - player.x) + (Math.random()-0.5)*0.12;
+            const b = makeBullet(player.x, player.y, Math.cos(a)*13, Math.sin(a)*13,
+              2200, 'player', '#b71c1c', 'bounce', 7);
+            b.life = 110; b.bounces = 9; b.ricoShot = true; bullets.push(b);
+            SFX.shoot('bounce');
+          }, i*60);
+        }
+        playerAmmo--;
+        return;
+      } else if (player.d.atk === 'arrow' || player.defKey === 'colt' || player.defKey === 'rico' || player.defKey === 'jessie' || player.defKey === 'lightning') {
+        // 보·콜트·리코·제시: 5발 시간차 연사
+        const capX = mouseWorld.x, capY = mouseWorld.y;
+        for (let i = 0; i < 5; i++) {
+          setTimeout(() => {
+            if (!player || !player.alive) return;
+            bullets.push(...shootBullets(player, capX, capY, false));
+            SFX.shoot(player.d.atk);
+          }, i * 100);
+        }
+      } else if (player.defKey === 'feitan') {
+        // 팸: 6발 시간차 연사
+        const capX = mouseWorld.x, capY = mouseWorld.y;
+        for (let i = 0; i < 6; i++) {
+          setTimeout(() => {
+            if (!player || !player.alive) return;
+            bullets.push(...shootBullets(player, capX, capY, false));
+            SFX.shoot('bullet');
+          }, i * 80);
+        }
+      } else {
+        bullets.push(...shootBullets(player, mouseWorld.x, mouseWorld.y, false));
+        SFX.shoot(player.d.atk);
+      }
+      playerAmmo--;
+    }
+  }
+}
+
+// ────────────────────────────────────────────────────────────
+// 이벤트 등록
+// ────────────────────────────────────────────────────────────
+window.addEventListener('keydown', e => {
+  if (['ArrowUp','ArrowDown','ArrowLeft','ArrowRight',' '].includes(e.key)) e.preventDefault();
+  keys[e.key] = true;
+  if (e.key===' '||e.key==='z'||e.key==='Z') tryShoot(false);
+  if (e.key==='e'||e.key==='E') tryShoot(true);
+});
+window.addEventListener('keyup', e => { keys[e.key] = false; });
+
+canvas.addEventListener('mousemove', e => {
+  const r = canvas.getBoundingClientRect();
+  mouseWorld.x = (e.clientX - r.left) + cam.x;
+  mouseWorld.y = (e.clientY - r.top)  + cam.y;
+});
+canvas.addEventListener('mousedown', e => {
+  e.preventDefault();
+  if (e.button===0) tryShoot(false);
+  if (e.button===2) tryShoot(true);
+});
+canvas.addEventListener('contextmenu', e => e.preventDefault());
+
+// ────────────────────────────────────────────────────────────
+// 모바일 하단 패널 조이스틱
+// ────────────────────────────────────────────────────────────
+(function setupJoystick() {
+  if (!('ontouchstart' in window) && navigator.maxTouchPoints < 1) return;
+
+  const controlsEl      = document.getElementById('controls');
+  const mobileControls  = document.getElementById('mobile-controls');
+  const mcLeft          = document.getElementById('mc-left');
+  const mcLeftKnob      = document.getElementById('mc-left-knob');
+  const mcRight         = document.getElementById('mc-right');
+  const mcRightKnob     = document.getElementById('mc-right-knob');
+  const mcSuper         = document.getElementById('mc-super');
+  const PANEL_H = 160;
+  const MCR = 46; // 패널 조이스틱 최대 반지름
+
+  if (controlsEl) controlsEl.style.display = 'none';
+  canvas.style.touchAction = 'none';
+
+  // 캔버스를 세로 공간에 맞게 축소, 가로 중앙 정렬
+  function applyMobileLayout() {
+    const vw = window.innerWidth;
+    const vh = window.innerHeight;
+    const bar = document.getElementById('trophy-bar');
+    const barH = (bar && bar.style.display !== 'none') ? bar.offsetHeight : 0;
+    const availH = vh - PANEL_H - barH;
+    const scale = Math.min(vw / W, availH / H);
+    const wrap = document.getElementById('wrap');
+    wrap.style.transform = `scale(${scale})`;
+    wrap.style.transformOrigin = 'top left';
+    wrap.style.marginLeft = `${(vw - W * scale) / 2}px`;
+    wrap.style.marginTop = `${barH}px`;
+    wrap.style.marginBottom = `${-H * (1 - scale)}px`;
+    document.body.style.flexDirection = 'column';
+    document.body.style.justifyContent = 'flex-start';
+    document.body.style.alignItems = 'flex-start';
+  }
+  window.addEventListener('resize', applyMobileLayout);
+
+  function resetKnob(k) { k.style.transform = 'translate(-50%,-50%)'; }
+
+  function resetAll() {
+    joyL.active = false; joyL.dx = 0; joyL.dy = 0; resetKnob(mcLeftKnob);
+    joyR.active = false; joyR.dx = 0; joyR.dy = 0; resetKnob(mcRightKnob);
+    joyS.active = false; joyS.dx = 0; joyS.dy = 0; mcSuper.style.transform = '';
+  }
+
+  // ── 이동 조이스틱 (왼쪽)
+  mcLeft.addEventListener('touchstart', e => {
+    e.preventDefault();
+    if (state !== 'playing' || joyL.active) return;
+    const t = e.changedTouches[0];
+    joyL.active = true; joyL.id = t.identifier; joyL.dx = 0; joyL.dy = 0;
+  }, { passive: false });
+
+  mcLeft.addEventListener('touchmove', e => {
+    e.preventDefault();
+    for (const t of e.changedTouches) {
+      if (t.identifier !== joyL.id) continue;
+      const r = mcLeft.getBoundingClientRect();
+      let dx = t.clientX - (r.left + r.width / 2);
+      let dy = t.clientY - (r.top  + r.height / 2);
+      const len = Math.hypot(dx, dy);
+      if (len > MCR) { dx = dx/len*MCR; dy = dy/len*MCR; }
+      joyL.dx = dx / MCR; joyL.dy = dy / MCR;
+      mcLeftKnob.style.transform = `translate(calc(-50% + ${dx}px), calc(-50% + ${dy}px))`;
+    }
+  }, { passive: false });
+
+  function endL(id) {
+    if (joyL.id !== id) return;
+    joyL.active = false; joyL.dx = 0; joyL.dy = 0; resetKnob(mcLeftKnob);
+  }
+  mcLeft.addEventListener('touchend',    e => { for (const t of e.changedTouches) endL(t.identifier); });
+  mcLeft.addEventListener('touchcancel', e => { for (const t of e.changedTouches) endL(t.identifier); });
+
+  // ── 공격 조이스틱 (오른쪽)
+  mcRight.addEventListener('touchstart', e => {
+    e.preventDefault();
+    if (state !== 'playing' || joyR.active) return;
+    const t = e.changedTouches[0];
+    joyR.active = true; joyR.id = t.identifier; joyR.dx = 0; joyR.dy = 0;
+  }, { passive: false });
+
+  window.addEventListener('touchmove', e => {
+    if (!joyR.active) return;
+    for (const t of e.changedTouches) {
+      if (t.identifier !== joyR.id) continue;
+      const r = mcRight.getBoundingClientRect();
+      let dx = t.clientX - (r.left + r.width / 2);
+      let dy = t.clientY - (r.top  + r.height / 2);
+      const len = Math.hypot(dx, dy);
+      if (len > MCR) { dx = dx/len*MCR; dy = dy/len*MCR; }
+      joyR.dx = dx / MCR; joyR.dy = dy / MCR;
+      mcRightKnob.style.transform = `translate(calc(-50% + ${dx}px), calc(-50% + ${dy}px))`;
+      if (player && len > 8) {
+        mouseWorld.x = player.x + joyR.dx * 400;
+        mouseWorld.y = player.y + joyR.dy * 400;
+      }
+    }
+  }, { passive: true });
+
+  window.addEventListener('touchend', e => {
+    if (!joyR.active) return;
+    for (const t of e.changedTouches) {
+      if (t.identifier !== joyR.id) continue;
+      const wasTap = Math.hypot(joyR.dx, joyR.dy) < 0.2;
+      joyR.active = false; joyR.dx = 0; joyR.dy = 0; resetKnob(mcRightKnob);
+      if (state !== 'playing') continue;
+      if (!player) continue;
+      if (wasTap) {
+        // 탭: 자동조준
+        const enemies = getTargets('player');
+        if (enemies.length === 0) continue;
+        const hasLOS = (en) => {
+          const steps = 12;
+          for (let i = 1; i <= steps; i++) {
+            const t = i / steps;
+            if (solid(player.x + (en.x - player.x) * t, player.y + (en.y - player.y) * t)) return false;
+          }
+          return true;
+        };
+        const visible = enemies.filter(hasLOS);
+        const pool = visible.length > 0 ? visible : enemies;
+        let nearest = pool[0];
+        let minD = Math.hypot(nearest.x - player.x, nearest.y - player.y);
+        for (const en of pool) {
+          const d = Math.hypot(en.x - player.x, en.y - player.y);
+          if (d < minD) { minD = d; nearest = en; }
+        }
+        mouseWorld.x = nearest.x;
+        mouseWorld.y = nearest.y;
+      }
+      // 드래그: mouseWorld가 이미 drag 방향으로 설정됨
+      tryShoot(false);
+    }
+  });
+  window.addEventListener('touchcancel', e => {
+    if (!joyR.active) return;
+    for (const t of e.changedTouches) {
+      if (t.identifier !== joyR.id) continue;
+      joyR.active = false; joyR.dx = 0; joyR.dy = 0; resetKnob(mcRightKnob);
+    }
+  });
+
+  // ── 슈퍼 조이스틱 (중앙 버튼, 밀어서 조준 → 떼면 발동)
+  mcSuper.addEventListener('touchstart', e => {
+    e.preventDefault(); e.stopPropagation();
+    if (state !== 'playing' || joyS.active) return;
+    const t = e.changedTouches[0];
+    joyS.active = true; joyS.id = t.identifier; joyS.dx = 0; joyS.dy = 0;
+  }, { passive: false });
+
+  window.addEventListener('touchmove', e => {
+    if (!joyS.active) return;
+    for (const t of e.changedTouches) {
+      if (t.identifier !== joyS.id) continue;
+      const r = mcSuper.getBoundingClientRect();
+      let dx = t.clientX - (r.left + r.width / 2);
+      let dy = t.clientY - (r.top  + r.height / 2);
+      const len = Math.hypot(dx, dy);
+      const SR = 38;
+      if (len > SR) { dx = dx/len*SR; dy = dy/len*SR; }
+      joyS.dx = dx / SR; joyS.dy = dy / SR;
+      mcSuper.style.transform = `translate(${dx * 0.5}px, ${dy * 0.5}px)`;
+      if (player && len > 8) {
+        mouseWorld.x = player.x + joyS.dx * 300;
+        mouseWorld.y = player.y + joyS.dy * 300;
+      }
+    }
+  }, { passive: true });
+
+  window.addEventListener('touchend', e => {
+    if (!joyS.active) return;
+    for (const t of e.changedTouches) {
+      if (t.identifier !== joyS.id) continue;
+      joyS.active = false;
+      const wasTap = Math.hypot(joyS.dx, joyS.dy) < 0.2;
+      joyS.dx = 0; joyS.dy = 0;
+      mcSuper.style.transform = '';
+      if (state === 'playing') { if (wasTap) autoAimToNearest(); tryShoot(true); }
+    }
+  });
+  window.addEventListener('touchcancel', e => {
+    if (!joyS.active) return;
+    for (const t of e.changedTouches) {
+      if (t.identifier !== joyS.id) continue;
+      joyS.active = false; joyS.dx = 0; joyS.dy = 0; mcSuper.style.transform = '';
+    }
+  });
+
+  // ── 게임 상태에 따른 패널 표시
+  const origStartGame = window.startGame;
+  window.startGame = function() {
+    origStartGame && origStartGame();
+    mobileControls.style.display = 'flex';
+    applyMobileLayout();
+  };
+  const origReturnMenu = window.returnMenu;
+  window.returnMenu = function() {
+    origReturnMenu && origReturnMenu();
+    mobileControls.style.display = 'none';
+    resetAll();
+    const wrap = document.getElementById('wrap');
+    wrap.style.transform = '';
+    wrap.style.marginLeft = '';
+    wrap.style.marginBottom = '';
+    document.body.style.flexDirection = '';
+    document.body.style.justifyContent = '';
+    document.body.style.alignItems = '';
+  };
+  const origReplayGame = window.replayGame;
+  window.replayGame = function() {
+    origReplayGame && origReplayGame();
+    mobileControls.style.display = 'flex';
+    applyMobileLayout();
+    resetAll();
+  };
+})();
+
+// ────────────────────────────────────────────────────────────
+// 게임 루프
+// ────────────────────────────────────────────────────────────
+function loop(ts) {
+  if (state !== 'playing') return;
+  const dt = Math.min((ts - prevT) / 1000, 0.05);
+  prevT = ts;
+
+  // ── 업데이트 ──
+  handlePlayerInput(dt);
+  updateDash(dt);
+  updateKenjiSlide(dt);
+  updateCam();
+
+  // 임시 봇(소환물) 수명 처리
+  for (const b of bots) {
+    if (b._tempBot && b.alive) {
+      b._tempLife -= dt;
+      if (b._tempLife <= 0) { b.alive = false; }
+      // 터렛은 이동하지 않도록 spd=0 유지
+    }
+  }
+  // 죽은 임시봇 제거
+  bots = bots.filter(b => !(b._tempBot && !b.alive));
+
+  for (const b of bots) { if (b._isBoss) continue; updateBot(b, dt); }
+  if (selMode === 'boss') updateBoss(dt);
+  updateBullets(dt);
+  updateParticles(dt);
+  updateRegen(dt);
+  updatePoison(dt);
+  updateMines(dt);
+
+  // 버프 타이머
+  // (8비트 부스터는 HP로만 소멸 - 타이머 없음)
+  if (sandyBuff)  { sandyBuff.timer  -= dt; if (sandyBuff.timer <=0) sandyBuff=null; }
+  updateHealTurret(dt);
+
+  // 모드별
+  if (selMode==='gemgrab') {
+    gemSpawnTimer -= dt;
+    if (gemSpawnTimer<=0) { gemSpawnTimer=3; spawnGemCenter(); }
+    updateGems(dt);
+
+    const totalGems  = (player?player.gems:0) + bots.filter(b=>b.team==='ally').reduce((s,b)=>s+b.gems,0);
+    const enemyGems  = bots.filter(b=>b.team==='enemy').reduce((s,b)=>s+b.gems,0);
+    // 아군 10개 → 카운트다운 후 승리
+    if (totalGems>=10) {
+      gemCDtimer += dt;
+      if (gemCDtimer>=1) { gemCDtimer=0; gemCD--; }
+      if (gemCD<=0) { endGame(true); return; }
+    } else { gemCD=20; gemCDtimer=0; }
+    // 적 10개 → 카운트다운 후 패배
+    if (enemyGems>=10) {
+      enemyGemCDtimer = (enemyGemCDtimer||0) + dt;
+      if (enemyGemCDtimer>=1) { enemyGemCDtimer=0; enemyGemCD=(enemyGemCD||20)-1; }
+      if ((enemyGemCD||20)<=0) { endGame(false); return; }
+    } else { enemyGemCD=20; enemyGemCDtimer=0; }
+  } else if (selMode==='bounty') {
+    bountyTime -= dt;
+    score = kills*2;
+    // 타이머 종료 시 킬 수 비교로 승패 결정 (부활 있으므로 전멸 즉시 종료 없음)
+    if (bountyTime<=0) {
+      const eKills = bots.filter(b=>b.team==='enemy').reduce((s,b)=>s+(b.kills||0),0);
+      endGame(kills > eKills);
+      return;
+    }
+  } else if (selMode==='heist') {
+    updateHeist(dt);
+  } else if (selMode==='brawlball') {
+    updateBrawlBall(dt);
+  } else if (selMode==='siege') {
+    updateSiege(dt);
+  } else if (selMode==='knockout') {
+    updateKnockout(dt);
+  }
+
+  // ── 부활 시스템 (팀전 중 녹아웃 제외) ──
+  if (!player.alive && selMode !== 'solo' && selMode !== 'knockout') {
+    // 바운티: 타이머 종료 시 부활 대기 중이어도 즉시 끝냄
+    if (selMode === 'bounty' && bountyTime <= 0) {
+      const eKills = bots.filter(b=>b.team==='enemy').reduce((s,b)=>s+(b.kills||0),0);
+      endGame(kills > eKills); return;
+    }
+
+    // 살아있거나 부활 대기 중인 적이 하나도 없으면 승리 (보스전: 보스만 체크)
+    const activeOrWaitingEnemies = selMode === 'boss'
+      ? (bossEnt && bossEnt.alive ? 1 : 0)
+      : bots.filter(b => b.team === 'enemy' && (b.alive || b.botRespawnTimer > 0)).length;
+    if (activeOrWaitingEnemies === 0) { endGame(true); return; }
+
+    // 살아있는 아군이 하나도 없으면 패배
+    const activeAllies = bots.filter(b => b.team === 'ally' && b.alive).length;
+    if (activeAllies === 0) {
+      endGame(false); return;
+    }
+    if (!isDead) {
+      // 방금 죽음 → 부활 대기 시작
+      isDead = true;
+      respawnTimer = 15;
+      SFX.playerDeath();
+    }
+    respawnTimer -= dt;
+    if (respawnTimer <= 0) {
+      // 부활! - 베이스(맵 가장자리)에서 부활
+      const sp = safeSpawn('left');
+      player.x = sp.x; player.y = sp.y;
+      player.hp = player.maxHp;
+      player.alive = true;
+      player.invincTimer = 3;
+      isDead = false;
+      spawnParts(player.x, player.y, '#00ff88', 20);
+    }
+    // 부활 대기 중 화면 그리기 (카운트다운 표시)
+    ctx.clearRect(0,0,W,H);
+    drawMap();
+    drawGems();
+    if (selMode==='heist') drawHeist();
+    if (selMode==='brawlball') drawBrawlBall();
+    for (const b of bots) { if (b._isBoss) continue; drawEnt(b); }
+    if (selMode === 'boss') { drawBossLobWarning(); drawBoss(); }
+    for (const bl of bullets) drawBullet(bl);
+    drawParticles();
+    drawMinimap();
+    updateHUD();
+    // 부활 대기 오버레이
+    ctx.save();
+    ctx.fillStyle = 'rgba(0,0,0,0.55)';
+    ctx.fillRect(0, H/2-70, W, 140);
+    ctx.fillStyle = '#fff';
+    ctx.font = 'bold 28px Arial';
+    ctx.textAlign = 'center'; ctx.textBaseline = 'middle';
+    ctx.fillText(`${Math.ceil(respawnTimer)}초 후 부활...`, W/2, H/2);
+    ctx.fillStyle = '#aaa';
+    ctx.font = '16px Arial';
+    ctx.fillText('팀원이 살아있습니다', W/2, H/2+40);
+    ctx.restore();
+    raf = requestAnimationFrame(loop);
+    return;
+  }
+
+  // ── 녹아웃: 플레이어 사망 시 관전 (updateKnockout이 라운드 처리) ──
+  if (!player.alive && selMode === 'knockout') {
+    if (!isDead) { isDead = true; SFX.playerDeath(); }
+    ctx.clearRect(0,0,W,H);
+    drawMap();
+    drawGems();
+    for (const b of bots) drawEnt(b);
+    for (const bl of bullets) drawBullet(bl);
+    drawParticles();
+    drawMinimap();
+    updateHUD();
+    ctx.save();
+    ctx.fillStyle = 'rgba(0,0,0,0.6)';
+    ctx.fillRect(0, H/2-50, W, 100);
+    ctx.fillStyle = '#ff4444';
+    ctx.font = 'bold 26px Arial';
+    ctx.textAlign = 'center'; ctx.textBaseline = 'middle';
+    ctx.fillText('💀 사망 — 팀원을 응원하세요!', W/2, H/2);
+    ctx.restore();
+    raf = requestAnimationFrame(loop);
+    return;
+  }
+
+  // 승패 체크 (녹아웃은 updateKnockout에서 처리됨)
+  if (!player || !player.alive) { SFX.playerDeath(); endGame(false); return; }
+  if (selMode==='solo') {
+    // 솔로: 봇이 모두 죽으면 승리
+    const aliveAll = bots.filter(b=>b.alive && !b._tempBot).length;
+    if (aliveAll===0) { endGame(true); return; }
+  } else if (selMode==='boss') {
+    // 보스전: 보스가 죽으면 즉시 승리 (다음 판에 다음 웨이브)
+    if (!bossWaveClearing && bossEnt && !bossEnt.alive) {
+      bossWaveClearing = true;
+      // 웨이브 진행 저장 (최대 마지막 웨이브까지)
+      const nextWave = Math.min(bossWave + 1, BOSS_WAVES.length);
+      try { localStorage.setItem('brawl_boss_wave', nextWave); } catch(e) {}
+      // 웨이브 클리어 시 보상 캐릭터 해금
+      try { localStorage.setItem('brawl_boss_reward_' + bossWave, '1'); } catch(e) {}
+      endGame(true);
+    }
+  } else if (selMode==='gemgrab' || selMode==='heist' || selMode==='brawlball' || selMode==='siege' || selMode==='knockout') {
+    // 위 모드들은 각자의 종료 조건(보석/금고/골/시간/전멸)으로 끝남 — 여기선 추가 체크 없음
+  } else if (selMode==='bounty') {
+    // 바운티는 타이머로만 종료 — 여기선 추가 체크 없음
+  }
+
+  // ── 그리기 ──
+  ctx.globalAlpha = 1;
+  ctx.globalCompositeOperation = 'source-over';
+  ctx.clearRect(0,0,W,H);
+  ctx.fillStyle = '#4a7a2a'; // 잔디 기본 배경 (맵 렌더링 실패 시 대비)
+  ctx.fillRect(0,0,W,H);
+  drawMap();
+  drawGems();
+  drawMines();
+  drawDamageBooster();
+  drawHealTurret();
+  if (selMode==='heist') drawHeist();
+  if (selMode==='brawlball') drawBrawlBall();
+  for (const b of bots) { if (b._isBoss) continue; drawEnt(b); }
+  if (selMode === 'boss') { drawBossLobWarning(); drawBoss(); }
+  // 조준선
+  if (player && player.alive) {
+    ctx.save();
+    ctx.setLineDash([4,4]);
+    ctx.strokeStyle='rgba(255,255,255,0.25)';
+    ctx.lineWidth=1;
+    ctx.beginPath();
+    ctx.moveTo(player.x-cam.x, player.y-cam.y);
+    ctx.lineTo(mouseWorld.x-cam.x, mouseWorld.y-cam.y);
+    ctx.stroke();
+    ctx.restore();
+  }
+  for (const b of bullets) drawBullet(b);
+  drawParticles();
+  if (player) drawEnt(player, true);
+  drawMinimap();
+  updateHUD();
+
+  raf = requestAnimationFrame(loop);
+}
+
+// ────────────────────────────────────────────────────────────
+// 게임 시작 / 종료
+// ────────────────────────────────────────────────────────────
+function startGame() {
+  document.getElementById('menu').style.display    = 'none';
+  document.getElementById('gameover').style.display = 'none';
+  document.getElementById('wrap').style.display    = 'block';
+
+  state = 'playing';
+  score=0; kills=0; bountyTime=120; gemCD=20; gemCDtimer=0; gemSpawnTimer=3;
+  bullets=[]; particles=[]; gems=[]; bots=[]; mines=[];
+  playerAmmo=3; playerAmmoTimer=0; superCooldown=0; kenjiThrustReady=true; kenjiSlideState=null;
+  keys={};
+  respawnTimer=0; isDead=false; dashState=null;
+  damageBooster=null; sandyBuff=null; healTurret=null;
+  heistHp=null; siegeTimer=0; siegeBolts=null; siegeBot=null; brawlBall=null;
+  koRound=0; koWins={ally:0,enemy:0};
+  bossEnt=null; bossPhase=1; bossWaveClearing=false; bossAttackTimer=1.5; bossShockwaveTimer=8; bossMinionTimer=20; bossLobTimer=6; bossLobWarning=null;
+  bossWave = selMode === 'boss' ? (parseInt(localStorage.getItem('brawl_boss_wave')||'1')||1) : 1;
+  bossWave = Math.max(1, Math.min(bossWave, BOSS_WAVES.length));
+
+  // 맵 랜덤 선택 (브롤볼은 공 끼임 방지를 위해 solo_default 고정)
+  let chosenMap;
+  if (selMode === 'brawlball') {
+    chosenMap = 'solo_arena';
+  } else {
+    const modeMapOptions = Object.keys(MAP_LAYOUTS).filter(k=>k.startsWith(selMode+'_'));
+    const fallback = Object.keys(MAP_LAYOUTS).filter(k=>k.startsWith('solo_'));
+    const mapPool = modeMapOptions.length > 0 ? modeMapOptions : fallback;
+    chosenMap = mapPool[Math.random()*mapPool.length|0];
+  }
+  map = makeMap(selMode, chosenMap);
+
+  // 플레이어 스폰
+  const ps = safeSpawn('left');
+  player = makeEntity(ps.x, ps.y, selBrawler, 'player');
+  // 트로피 보너스: 브롤러 개인 트로피 100개당 HP·데미지 +10% (최대 +100%)
+  {
+    const perT = (trophyData.perBrawler && trophyData.perBrawler[selBrawler]) || 0;
+    if (selBrawler === 'mystery') {
+      // ? 브롤러: 총 트로피 기준으로 무제한 스케일 (+1% HP per 100 total trophies)
+      const totalT = trophyData.total || 0;
+      const bonusPct = totalT / 10000; // 10000 트로피마다 +100% HP (무제한)
+      player.hp    = Math.round(player.d.hp * (1 + bonusPct));
+      player.maxHp = player.hp;
+      player.dmgBonus = bonusPct;
+    } else {
+      const bonusPct = Math.min(perT / 1000, 1.0); // 0 ~ 1.0 (0% ~ 100%)
+      if (bonusPct > 0) {
+        player.hp    = Math.round(player.d.hp    * (1 + bonusPct));
+        player.maxHp = player.hp;
+        player.dmgBonus = bonusPct;
+      }
+    }
+  }
+  player.mouseX = ps.x; player.mouseY = ps.y;
+  cam.x = Math.max(0, Math.min(MX*TS-W, ps.x-W/2));
+  cam.y = Math.max(0, Math.min(MY*TS-H, ps.y-H/2));
+  mouseWorld.x = ps.x; mouseWorld.y = ps.y;
+
+  const HXH_KEYS = ['gon','leorio','kurapika','killua','hisoka','mystery']; // 플레이어 전용
+  const PLAYER_ONLY_KEYS = ['8bit', 'feitan']; // 솔로: 봇 사용 불가 / 팀전: 적 봇 사용 불가
+  const bk = Object.keys(DEFS).filter(k => !HXH_KEYS.includes(k));
+  const bkNoPlayerOnly = bk.filter(k => !PLAYER_ONLY_KEYS.includes(k)); // 솔로봇·적봇용
+  // 보스 보상 캐릭터는 어려운 보스일수록 낮은 등장 확률 (일반=10, 보스1=3, 보스2=2, 보스3=1.5, 보스4=1, 보스5=0.5)
+  const BOSS_WEIGHTS = { darkking:3, skullking:2, flamelord:1.5, lightning:1, finaldemon:0.5 };
+  function weightedRandKey(pool) {
+    const weights = pool.map(k => BOSS_WEIGHTS[k] ?? 10);
+    const total = weights.reduce((a,b)=>a+b,0);
+    let r = Math.random()*total;
+    for (let i=0;i<pool.length;i++) { r-=weights[i]; if(r<=0) return pool[i]; }
+    return pool[pool.length-1];
+  }
+
+  if (selMode==='solo') {
+    // 솔로: 봇마다 고유 팀 번호 → 서로 + 플레이어 모두 적 (8bit·팸 봇 사용 불가)
+    for (let i=0;i<9;i++) {
+      const sp = safeSpawn('any');
+      const ent = makeEntity(sp.x, sp.y, weightedRandKey(bkNoPlayerOnly), 'solo_'+i);
+      bots.push(ent);
+    }
+  } else {
+    // 아군: 플레이어 브롤러 제외 후 셔플 (8bit·팸 아군 사용 가능)
+    const allyPool = bk.filter(k=>k!==selBrawler);
+    // 셔플
+    for (let i=allyPool.length-1;i>0;i--) {
+      const j=Math.random()*i|0; [allyPool[i],allyPool[j]]=[allyPool[j],allyPool[i]];
+    }
+    const allyCount = 2;  // 플레이어 포함 항상 3v3 (플레이어+아군2 vs 적3)
+    const enemyCount = selMode === 'boss' ? 0 : 3;  // 보스전: 일반 적 없음
+    // 다시 플레이 시 이전 팀원 유지, 아니면 새로 랜덤 선택 후 저장
+    const chosenAllies = (isReplay && lastAllyKeys && lastAllyKeys.length === allyCount)
+      ? lastAllyKeys
+      : allyPool.slice(0, allyCount);
+    lastAllyKeys = chosenAllies;
+    isReplay = false;
+    for (let i=0;i<allyCount;i++) {
+      const sp = safeSpawn('left');
+      bots.push(makeEntity(sp.x, sp.y, chosenAllies[i], 'ally'));
+    }
+    for (let i=0;i<enemyCount;i++) {
+      const sp = safeSpawn('right');
+      bots.push(makeEntity(sp.x, sp.y, weightedRandKey(bkNoPlayerOnly), 'enemy'));
+    }
+    if (selMode==='gemgrab') spawnGemCenter();
+    if (selMode==='heist') { heistHp={ally:20000,enemy:20000}; }
+    if (selMode==='siege') { siegeTimer=120; siegeBolts={ally:0,enemy:0}; siegeBot=null; }
+    if (selMode==='brawlball') { brawlBall={x:MX*TS/2,y:MY*TS/2,vx:0,vy:0,holder:null}; }
+    if (selMode==='boss') {
+      spawnNextBoss();
+    }
+  }
+
+  if (raf) cancelAnimationFrame(raf);
+  prevT = performance.now();
+  raf = requestAnimationFrame(loop);
+}
+
+function endGame(win) {
+  state = 'over';
+  if (raf) { cancelAnimationFrame(raf); raf=null; }
+
+  if (win) SFX.victory(); else SFX.defeat();
+
+  // 솔로 쇼다운 순위 계산
+  let soloRank = null;
+  if (selMode === 'solo') {
+    soloRank = win ? 1 : (bots.filter(b=>b.alive && !b._tempBot).length + 1);
+  }
+
+  const { gain, newUnlocks } = applyTrophyResult(win, soloRank);
+
+  // 새로 해금된 모드 (이미 해금된 건 제외 - 중복 알림 방지)
+  const newModes = MODES.filter(m => {
+    return m.req > 0 && trophyData.total >= m.req && (trophyData.total - gain) < m.req
+      && !(trophyData.unlockedModes||[]).includes(m.id);
+  });
+
+  // 솔로 쇼다운: 순위 표시
+  let goEmoji, goText;
+  if (selMode === 'solo' && soloRank !== null) {
+    const rankEmojis = ['🥇','🥈','🥉','4️⃣','5️⃣','6️⃣','7️⃣','8️⃣','9️⃣','🔟'];
+    goEmoji = rankEmojis[soloRank-1] || '💀';
+    goText  = soloRank === 1 ? '1등 - 우승!' : `${soloRank}등`;
+  } else {
+    goEmoji = win ? '🏆' : '💀';
+    goText  = win ? '승리!' : '패배...';
+  }
+
+  document.getElementById('goEmoji').textContent = goEmoji;
+  document.getElementById('goText').textContent  = goText;
+  document.getElementById('goSub').textContent   = `점수: ${score}  처치: ${kills}`;
+  document.getElementById('goTrophy').textContent =
+    `🏆 ${gain >= 0 ? '+' : ''}${gain} 트로피  (총 ${trophyData.total})`;
+
+  const unlockEl = document.getElementById('goUnlock');
+  const allUnlocks = [
+    ...newUnlocks.map(k => DEFS[k].ico + ' ' + DEFS[k].name + ' (브롤러)'),
+    ...newModes.map(m => m.ico + ' ' + m.name + ' (모드)'),
+  ];
+  if (allUnlocks.length > 0) {
+    unlockEl.style.display = 'block';
+    unlockEl.textContent = '🎉 해금! ' + allUnlocks.join(', ');
+  } else {
+    unlockEl.style.display = 'none';
+  }
+
+  // 대미지/치유 통계
+  const allEnts = [player, ...bots.filter(b => !b._tempBot)];
+  const statsEl = document.getElementById('goStats');
+  const topDmg = allEnts.reduce((a, b) => (b.totalDamage > a.totalDamage ? b : a), allEnts[0]);
+  const topHeal = allEnts.reduce((a, b) => (b.totalHealing > a.totalHealing ? b : a), allEnts[0]);
+  if (topDmg.totalDamage > 0 || topHeal.totalHealing > 0) {
+    let html = '';
+    if (topDmg.totalDamage > 0) {
+      const isPlayer = topDmg === player;
+      html += `⚔️ 최다 대미지: <b>${topDmg.d.ico} ${topDmg.d.name}${isPlayer ? ' (나)' : ''}</b> — ${Math.round(topDmg.totalDamage).toLocaleString()}<br>`;
+    }
+    if (topHeal.totalHealing > 0) {
+      const isPlayer = topHeal === player;
+      html += `💚 최다 치유: <b>${topHeal.d.ico} ${topHeal.d.name}${isPlayer ? ' (나)' : ''}</b> — ${Math.round(topHeal.totalHealing).toLocaleString()}`;
+    }
+    statsEl.innerHTML = html;
+    statsEl.style.display = 'block';
+  } else {
+    statsEl.style.display = 'none';
+  }
+
+  document.getElementById('gameover').style.display = 'flex';
+}
+
+function replayGame() {
+  isReplay = true;
+  startGame();
+}
+
+function returnMenu() {
+  state='menu';
+  if (raf) { cancelAnimationFrame(raf); raf=null; }
+  document.getElementById('gameover').style.display='none';
+  document.getElementById('wrap').style.display    = 'none';
+  document.getElementById('menu').style.display='flex';
+  // 모드 목록 갱신
+  const mr = document.getElementById('modeRow');
+  mr.innerHTML = '';
+  MODES.forEach(m => {
+    const unlocked = isModeUnlocked(m);
+    const el = document.createElement('div');
+    el.className = 'mcard' + (m.id===selMode&&unlocked?' sel':'') + (unlocked?'':' locked');
+    if (unlocked) {
+      el.innerHTML = `<span class="ico">${m.ico}</span><span class="nm">${m.name}</span><span>${m.desc}</span>`;
+      el.onclick = () => {
+        selMode = m.id;
+        mr.querySelectorAll('.mcard').forEach(c=>c.classList.remove('sel'));
+        el.classList.add('sel');
+      };
+    } else {
+      el.innerHTML = `<span class="ico">🔒</span><span class="nm">${m.name}</span><span class="trophy-req">🏆${m.req} 필요</span>`;
+    }
+    mr.appendChild(el);
+  });
+
+  // 브롤러 목록 갱신 (새로 해금된 브롤러 반영)
+  const br = document.getElementById('brawlerRow');
+  br.innerHTML = '';
+  Object.entries(DEFS).forEach(([k,d]) => {
+    const unlocked = isUnlocked(k);
+    const req = BRAWLER_TROPHY_REQ[k];
+    const el = document.createElement('div');
+    el.className = 'card' + (k===selBrawler?' sel':'') + (unlocked?'':' locked');
+    if (unlocked) {
+      el.innerHTML = `<span class="ico">${d.ico}</span><span class="nm">${d.name}</span><span>${d.desc}</span><span class="my-trophy">🏆${trophyData.perBrawler&&trophyData.perBrawler[k]||0}</span>`;
+      el.onclick = () => {
+        selBrawler = k;
+        br.querySelectorAll('.card').forEach(c=>c.classList.remove('sel'));
+        el.classList.add('sel');
+      };
+    } else {
+      el.innerHTML = `<span class="ico">🔒</span><span class="nm">${d.name}</span><span class="trophy-req">🏆${req} 필요</span><span class="my-trophy">현재: ${trophyData.total||0}</span>`;
+    }
+    br.appendChild(el);
+  });
+  updateTrophyBar();
+}
+
+// ────────────────────────────────────────────────────────────
+// 메뉴 UI 생성
+// ────────────────────────────────────────────────────────────
+const MODES = [
+  { id:'solo',      ico:'💀', name:'솔로 쇼다운', desc:'10인 생존', req:0   },
+  { id:'gemgrab',   ico:'💎', name:'젬 그랩',     desc:'팀 3v3',   req:10  },
+  { id:'bounty',    ico:'⭐', name:'바운티',       desc:'팀 3v3',   req:30  },
+  { id:'heist',     ico:'🏦', name:'하이스트',     desc:'금고 파괴', req:60  },
+  { id:'brawlball', ico:'⚽', name:'브롤볼',       desc:'골 넣기',  req:100 },
+  { id:'siege',     ico:'🤖', name:'시즈',         desc:'로봇 러시', req:150 },
+  { id:'knockout',  ico:'🥊', name:'녹아웃',       desc:'2선승',    req:200 },
+  { id:'boss',      ico:'👹', name:'보스전',        desc:'협동 보스', req:50  },
+];
+
+const MAP_META = {
+  gemgrab_default: { name:'기본 맵',  ico:'🏟️' },
+  gemgrab_tunnel:  { name:'터널 맵',  ico:'🚇' },
+  gemgrab_canyon:  { name:'협곡 맵',  ico:'🏔️' },
+  bounty_default:  { name:'기본 맵',  ico:'🏟️' },
+  bounty_longrange:{ name:'장거리 맵',ico:'🎯' },
+  bounty_maze:     { name:'미로 맵',  ico:'🌀' },
+  solo_default:    { name:'기본 맵',  ico:'🏟️' },
+  solo_arena:      { name:'아레나 맵',ico:'⚔️' },
+  solo_labyrinth:  { name:'미궁 맵',  ico:'🗺️' },
+  boss_arena:      { name:'보스 아레나', ico:'👹' },
+};
+
+function buildMapRow() {
+  const mapr = document.getElementById('mapRow');
+  mapr.innerHTML = '';
+  const keys = Object.keys(MAP_LAYOUTS).filter(k=>k.startsWith(selMode+'_'));
+  keys.forEach(k => {
+    const meta = MAP_META[k] || { name:k, ico:'🗺️' };
+    const el = document.createElement('div');
+    el.className = 'mcard' + (selMap===k.replace(selMode+'_','')?' sel':'');
+    el.innerHTML = `<span class="ico">${meta.ico}</span><span class="nm">${meta.name}</span>`;
+    el.onclick = () => {
+      selMap = k.replace(selMode+'_','');
+      mapr.querySelectorAll('.mcard').forEach(c=>c.classList.remove('sel'));
+      el.classList.add('sel');
+    };
+    mapr.appendChild(el);
+  });
+}
+
+function buildMenu() {
+  const mr = document.getElementById('modeRow');
+  MODES.forEach(m => {
+    const unlocked = isModeUnlocked(m);
+    const el = document.createElement('div');
+    el.className = 'mcard' + (m.id===selMode&&unlocked?' sel':'') + (unlocked?'':' locked');
+    if (unlocked) {
+      el.innerHTML = `<span class="ico">${m.ico}</span><span class="nm">${m.name}</span><span>${m.desc}</span>`;
+      el.onclick = () => {
+        selMode = m.id;
+        mr.querySelectorAll('.mcard').forEach(c=>c.classList.remove('sel'));
+        el.classList.add('sel');
+      };
+    } else {
+      el.innerHTML = `<span class="ico">🔒</span><span class="nm">${m.name}</span><span class="trophy-req">🏆${m.req} 필요</span>`;
+    }
+    mr.appendChild(el);
+  });
+
+  const br = document.getElementById('brawlerRow');
+  const HXH_KEYS2 = ['gon','leorio','kurapika','killua','hisoka','mystery','darkking','skullking','flamelord','lightning','finaldemon'];
+  Object.entries(DEFS).forEach(([k,d]) => {
+    const unlocked = isUnlocked(k);
+    const req = BRAWLER_TROPHY_REQ[k];
+    const isHxH2 = HXH_KEYS2.includes(k);
+    const isMystery = k === 'mystery';
+    const bossRewardMap = { darkking:'👹 보스1 보상', skullking:'💀 보스2 보상', flamelord:'🔥 보스3 보상', lightning:'⚡ 보스4 보상', finaldemon:'😈 보스5 보상' };
+    const eventTag2 = isMystery
+      ? `<span class="event-tag" style="background:linear-gradient(90deg,#b71c1c,#000);">🔥 나만의 브롤러</span>`
+      : bossRewardMap[k]
+      ? `<span class="event-tag" style="background:linear-gradient(90deg,#4a0080,#8b0000);">${bossRewardMap[k]}</span>`
+      : isHxH2 ? `<span class="event-tag">✨ 특별이벤트</span>` : '';
+    const el = document.createElement('div');
+    el.className = 'card' + (k===selBrawler?' sel':'') + (unlocked?'':' locked');
+    if (unlocked) {
+      el.innerHTML = `<span class="ico">${d.ico}</span><span class="nm">${d.name}</span><span>${d.desc}</span>${eventTag2}<span class="my-trophy">🏆${trophyData.perBrawler&&trophyData.perBrawler[k]||0}</span>`;
+      el.onclick = () => {
+        selBrawler = k;
+        br.querySelectorAll('.card').forEach(c=>c.classList.remove('sel'));
+        el.classList.add('sel');
+      };
+    } else {
+      el.innerHTML = `<span class="ico">🔒</span><span class="nm">${d.name}</span><span class="trophy-req">🏆${req} 필요</span>${eventTag2}<span class="my-trophy">현재: ${trophyData.total||0}</span>`;
+    }
+    br.appendChild(el);
+  });
+  updateTrophyBar();
+}
+
+buildMenu();
+</script>
+</body>
+</html>
