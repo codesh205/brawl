@@ -53,12 +53,22 @@ canvas { display:block; cursor:crosshair; }
 
 /* 상단 트로피 표시 */
 #trophy-bar { position:fixed; top:0; left:0; right:0; background:rgba(0,0,0,0.85); color:#f5a623; font-size:15px; font-weight:bold; text-align:center; padding:6px; z-index:200; display:none; }
+
+/* 모바일 조이스틱 */
+.joy-base { position:absolute; width:130px; height:130px; border-radius:50%; background:rgba(255,255,255,0.1); border:3px solid rgba(255,255,255,0.25); display:none; pointer-events:none; transform:translate(-50%,-50%); z-index:10; }
+.joy-knob { position:absolute; width:54px; height:54px; border-radius:50%; background:rgba(255,255,255,0.4); border:2px solid rgba(255,255,255,0.6); top:50%; left:50%; transform:translate(-50%,-50%); transition:none; }
+#joy-super-base { position:absolute; right:25px; bottom:25px; width:100px; height:100px; border-radius:50%; background:rgba(245,166,35,0.18); border:3px solid rgba(245,166,35,0.65); display:none; z-index:10; touch-action:none; }
+#joy-super-label { position:absolute; top:50%; left:50%; transform:translate(-50%,-50%); color:#f5a623; font-size:12px; font-weight:bold; pointer-events:none; z-index:1; }
+#joy-super-knob { position:absolute; width:46px; height:46px; border-radius:50%; background:rgba(245,166,35,0.55); border:2px solid rgba(245,166,35,0.9); top:50%; left:50%; transform:translate(-50%,-50%); pointer-events:none; }
 </style>
 </head>
 <body>
 <div id="trophy-bar">🏆 총 트로피: <span id="total-trophy">0</span></div>
 <div id="wrap" style="display:none">
   <canvas id="c"></canvas>
+  <div id="joy-left-base" class="joy-base"><div id="joy-left-knob" class="joy-knob"></div></div>
+  <div id="joy-right-base" class="joy-base"><div id="joy-right-knob" class="joy-knob"></div></div>
+  <div id="joy-super-base"><div id="joy-super-label">슈퍼</div><div id="joy-super-knob"></div></div>
   <div id="hud">
     <div id="hp"></div>
     <div id="score"></div>
@@ -459,6 +469,9 @@ let gems   = [];
 
 let keys   = {};
 let mouseWorld = { x:0, y:0 };
+const joyL = { active:false, id:-1, bx:0, by:0, dx:0, dy:0 };
+const joyR = { active:false, id:-1, bx:0, by:0, dx:0, dy:0 };
+const joyS = { active:false, id:-1, dx:0, dy:0 };
 let raf    = null;
 let prevT  = 0;
 
@@ -3049,12 +3062,26 @@ function handlePlayerInput(dt) {
   // 돌진 중엔 키 이동 무시 (updateDash에서 처리)
   if (!dashState) {
     let dx=0, dy=0;
-    if (keys['ArrowLeft']||keys['a']||keys['A']) dx -= 1;
-    if (keys['ArrowRight']||keys['d']||keys['D']) dx += 1;
-    if (keys['ArrowUp']||keys['w']||keys['W'])   dy -= 1;
-    if (keys['ArrowDown']||keys['s']||keys['S']) dy += 1;
-    if (dx && dy) { dx*=0.707; dy*=0.707; }
+    if (joyL.active) {
+      dx = joyL.dx; dy = joyL.dy;
+    } else {
+      if (keys['ArrowLeft']||keys['a']||keys['A']) dx -= 1;
+      if (keys['ArrowRight']||keys['d']||keys['D']) dx += 1;
+      if (keys['ArrowUp']||keys['w']||keys['W'])   dy -= 1;
+      if (keys['ArrowDown']||keys['s']||keys['S']) dy += 1;
+      if (dx && dy) { dx*=0.707; dy*=0.707; }
+    }
     moveEntity(player, dx*player.d.spd, dy*player.d.spd);
+  }
+
+  // 오른쪽 조이스틱 조준 및 자동 발사
+  if (joyR.active) {
+    const len = Math.hypot(joyR.dx, joyR.dy);
+    if (len > 0.15 && player) {
+      mouseWorld.x = player.x + joyR.dx * 300;
+      mouseWorld.y = player.y + joyR.dy * 300;
+      tryShoot(false);
+    }
   }
 
   player.angle = Math.atan2(mouseWorld.y-player.y, mouseWorld.x-player.x);
@@ -3074,6 +3101,12 @@ function handlePlayerInput(dt) {
     }
   }
   if (superCooldown>0) superCooldown -= dt;
+
+  // 에드거 패시브: 시간이 지나면 슈퍼 서서히 충전 (초당 약 3%)
+  if (player.defKey === 'edgar' && !player.superReady) {
+    player.superCharge = Math.min(100, player.superCharge + dt * 3);
+    if (player.superCharge >= 100) player.superReady = true;
+  }
 }
 
 // ────────────────────────────────────────────────────────────
@@ -3894,6 +3927,157 @@ canvas.addEventListener('mousedown', e => {
 canvas.addEventListener('contextmenu', e => e.preventDefault());
 
 // ────────────────────────────────────────────────────────────
+// 모바일 조이스틱
+// ────────────────────────────────────────────────────────────
+(function setupJoystick() {
+  if (!('ontouchstart' in window) && navigator.maxTouchPoints < 1) return;
+
+  const jLBase = document.getElementById('joy-left-base');
+  const jLKnob = document.getElementById('joy-left-knob');
+  const jRBase = document.getElementById('joy-right-base');
+  const jRKnob = document.getElementById('joy-right-knob');
+  const joySBase = document.getElementById('joy-super-base');
+  const joySKnob = document.getElementById('joy-super-knob');
+  const controlsEl = document.getElementById('controls');
+  const JS_R = 40; // 슈퍼 조이스틱 반지름
+
+  function showBase(base, cx, cy) {
+    base.style.left = cx + 'px';
+    base.style.top  = cy + 'px';
+    base.style.display = 'block';
+  }
+  function moveKnob(knob, dx, dy) {
+    knob.style.transform = `translate(calc(-50% + ${dx}px), calc(-50% + ${dy}px))`;
+  }
+  function hideBase(base, knob) {
+    base.style.display = 'none';
+    knob.style.transform = 'translate(-50%,-50%)';
+  }
+
+  const JR = 55; // 조이스틱 최대 반지름
+
+  canvas.addEventListener('touchstart', e => {
+    if (state !== 'playing') return;
+    e.preventDefault();
+    const rect = canvas.getBoundingClientRect();
+    for (const t of e.changedTouches) {
+      const cx = t.clientX - rect.left;
+      const cy = t.clientY - rect.top;
+      if (cx < W / 2) {
+        if (!joyL.active) {
+          joyL.active = true; joyL.id = t.identifier;
+          joyL.bx = cx; joyL.by = cy; joyL.dx = 0; joyL.dy = 0;
+          showBase(jLBase, cx, cy);
+        }
+      } else {
+        if (!joyR.active) {
+          joyR.active = true; joyR.id = t.identifier;
+          joyR.bx = cx; joyR.by = cy; joyR.dx = 0; joyR.dy = 0;
+          showBase(jRBase, cx, cy);
+        }
+      }
+    }
+  }, { passive: false });
+
+  canvas.addEventListener('touchmove', e => {
+    if (state !== 'playing') return;
+    e.preventDefault();
+    const rect = canvas.getBoundingClientRect();
+    for (const t of e.changedTouches) {
+      const cx = t.clientX - rect.left;
+      const cy = t.clientY - rect.top;
+      if (joyL.active && t.identifier === joyL.id) {
+        let dx = cx - joyL.bx, dy = cy - joyL.by;
+        const len = Math.hypot(dx, dy);
+        if (len > JR) { dx = dx/len*JR; dy = dy/len*JR; }
+        joyL.dx = dx / JR; joyL.dy = dy / JR;
+        moveKnob(jLKnob, dx, dy);
+      }
+      if (joyR.active && t.identifier === joyR.id) {
+        let dx = cx - joyR.bx, dy = cy - joyR.by;
+        const len = Math.hypot(dx, dy);
+        if (len > JR) { dx = dx/len*JR; dy = dy/len*JR; }
+        joyR.dx = dx / JR; joyR.dy = dy / JR;
+        moveKnob(jRKnob, dx, dy);
+      }
+    }
+  }, { passive: false });
+
+  function endTouch(id) {
+    if (joyL.active && joyL.id === id) {
+      joyL.active = false; joyL.dx = 0; joyL.dy = 0;
+      hideBase(jLBase, jLKnob);
+    }
+    if (joyR.active && joyR.id === id) {
+      joyR.active = false; joyR.dx = 0; joyR.dy = 0;
+      hideBase(jRBase, jRKnob);
+    }
+  }
+  canvas.addEventListener('touchend',    e => { if (state !== 'playing') return; e.preventDefault(); for (const t of e.changedTouches) endTouch(t.identifier); }, { passive: false });
+  canvas.addEventListener('touchcancel', e => { for (const t of e.changedTouches) endTouch(t.identifier); });
+
+  // 슈퍼 조이스틱: 베이스에서 touchstart → window에서 move/end 추적
+  joySBase.addEventListener('touchstart', e => {
+    e.preventDefault(); e.stopPropagation();
+    if (state !== 'playing') return;
+    const t = e.changedTouches[0];
+    joyS.active = true; joyS.id = t.identifier; joyS.dx = 0; joyS.dy = 0;
+  }, { passive: false });
+
+  window.addEventListener('touchmove', e => {
+    if (!joyS.active) return;
+    for (const t of e.changedTouches) {
+      if (t.identifier !== joyS.id) continue;
+      const rect = joySBase.getBoundingClientRect();
+      const bcx = rect.left + rect.width / 2, bcy = rect.top + rect.height / 2;
+      let dx = t.clientX - bcx, dy = t.clientY - bcy;
+      const len = Math.hypot(dx, dy);
+      if (len > JS_R) { dx = dx/len*JS_R; dy = dy/len*JS_R; }
+      joyS.dx = dx / JS_R; joyS.dy = dy / JS_R;
+      joySKnob.style.transform = `translate(calc(-50% + ${dx}px), calc(-50% + ${dy}px))`;
+      if (player && len > 8) {
+        mouseWorld.x = player.x + joyS.dx * 300;
+        mouseWorld.y = player.y + joyS.dy * 300;
+      }
+    }
+  }, { passive: true });
+
+  window.addEventListener('touchend', e => {
+    if (!joyS.active) return;
+    for (const t of e.changedTouches) {
+      if (t.identifier !== joyS.id) continue;
+      joyS.active = false; joyS.dx = 0; joyS.dy = 0;
+      joySKnob.style.transform = 'translate(-50%,-50%)';
+      if (state === 'playing') tryShoot(true);
+    }
+  });
+
+  // 게임 시작/종료 시 UI 표시 토글
+  const origStartGame = window.startGame;
+  window.startGame = function() {
+    origStartGame && origStartGame();
+    joySBase.style.display = 'block';
+    if (controlsEl) controlsEl.style.display = 'none';
+  };
+  const origReturnMenu = window.returnMenu;
+  window.returnMenu = function() {
+    origReturnMenu && origReturnMenu();
+    joySBase.style.display = 'none';
+    joyL.active = false; hideBase(jLBase, jLKnob);
+    joyR.active = false; hideBase(jRBase, jRKnob);
+    joyS.active = false; joySKnob.style.transform = 'translate(-50%,-50%)';
+  };
+  const origReplayGame = window.replayGame;
+  window.replayGame = function() {
+    origReplayGame && origReplayGame();
+    joySBase.style.display = 'block';
+    joyL.active = false; hideBase(jLBase, jLKnob);
+    joyR.active = false; hideBase(jRBase, jRKnob);
+    joyS.active = false; joySKnob.style.transform = 'translate(-50%,-50%)';
+  };
+})();
+
+// ────────────────────────────────────────────────────────────
 // 게임 루프
 // ────────────────────────────────────────────────────────────
 function loop(ts) {
@@ -4176,7 +4360,7 @@ function startGame() {
   cam.y = Math.max(0, Math.min(MY*TS-H, ps.y-H/2));
   mouseWorld.x = ps.x; mouseWorld.y = ps.y;
 
-  const HXH_KEYS = ['gon','leorio','kurapika','killua','hisoka','mystery','darkking','skullking','flamelord','lightning','finaldemon'];
+  const HXH_KEYS = ['gon','leorio','kurapika','killua','hisoka','mystery']; // 플레이어 전용
   const PLAYER_ONLY_KEYS = ['8bit', 'feitan']; // 솔로: 봇 사용 불가 / 팀전: 적 봇 사용 불가
   const bk = Object.keys(DEFS).filter(k => !HXH_KEYS.includes(k));
   const bkNoPlayerOnly = bk.filter(k => !PLAYER_ONLY_KEYS.includes(k)); // 솔로봇·적봇용
