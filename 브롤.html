@@ -542,6 +542,7 @@ let siegeIke = null;     // 시즈: {ally, enemy} IKE 기지 HP
 let siegeIkeShootTimer = { ally: 2, enemy: 2 }; // IKE 사격 타이머
 let siegeEnemyBolts = 0; // 적 볼트 카운터
 let siegeEnemyBoltTimer = 0; // 적 볼트 획득 타이머
+let siegeOvertime = false;   // 연장전 여부
 let brawlBall = null;    // 브롤볼: {x,y,vx,vy,holder}
 
 // 보스전
@@ -1508,7 +1509,7 @@ function updateHUD() {
   } else if (selMode==='brawlball') {
     mi = `⚽ 브롤볼 - 적 골대에 넣어라!`;
   } else if (selMode==='siege') {
-    mi = `🤖 시즈 ⏱${siegeTimer|0}초  볼트: ${siegeBolts?siegeBolts.ally:0}/10`;
+    mi = `🤖 시즈 ${siegeOvertime?'🔴연장전 ':''}⏱${siegeTimer|0}초  볼트: ${siegeBolts?siegeBolts.ally:0}/10`;
   } else if (selMode==='knockout') {
     mi = `🥊 녹아웃 ${koWins.ally}-${koWins.enemy} (2선승)`;
   } else if (selMode==='boss') {
@@ -2722,7 +2723,13 @@ function updateSiege(dt) {
   if (siegeTimer <= 0) {
     const allyDmg  = SIEGE_IKE_MAX_HP - siegeIke.ally;
     const enemyDmg = SIEGE_IKE_MAX_HP - siegeIke.enemy;
-    // 동률이면 승리, 아니면 더 많이 깎은 쪽 승리
+    if (enemyDmg === allyDmg && !siegeOvertime) {
+      // 동률 → 연장전 30초
+      siegeOvertime = true;
+      siegeTimer = 30;
+      spawnParts(player.x, player.y, '#ffe100', 30);
+      return;
+    }
     endGame(enemyDmg >= allyDmg);
     return;
   }
