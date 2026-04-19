@@ -328,6 +328,16 @@ const DEFS = {
   flamelord: { name:'화염군주',  ico:'🔥', color:'#e65100', hp:8000, spd:3.5, dmg:400, range:380, reload:1.4, atk:'lob',                                desc:'화염 투척',   superDesc:'🔥 화염 폭풍 (연속 투척)',  regen:500, regenDelay:1.8 }, // 보스3 보상
   lightning: { name:'번개황제',  ico:'⚡', color:'#1a237e', hp:8500, spd:3.8, dmg:1200, range:500, reload:0.8, atk:'bounce',                             desc:'번개 반사탄', superDesc:'⚡ 번개 폭발 (순간이동+전격)',regen:550, regenDelay:1.5 }, // 보스4 보상
   finaldemon: { name:'최종악마', ico:'😈', color:'#4a0080', hp:10000,spd:4.0, dmg:1500, range:400, reload:0.7, atk:'shotgun', pellets:6, spread:0.6,      desc:'악마의 강타', superDesc:'😈 지옥문 (극한 광역 폭발)', regen:700, regenDelay:1.2 }, // 보스5 보상
+  icelord:    { name:'빙하군주',   ico:'🧊', color:'#0077b6', hp:11000, spd:3.3, dmg:1800, range:420, reload:0.9, atk:'triple',                           desc:'냉기 3방향',  superDesc:'❄️ 빙결 폭풍 (전방위 냉기+슬로)', regen:700,  regenDelay:1.5 }, // 보스6 보상
+  poisonking: { name:'독액마왕',   ico:'☠️', color:'#2d6a4f', hp:10500, spd:3.6, dmg:1600, range:380, reload:0.8, atk:'lob',                              desc:'독 투척',     superDesc:'☠️ 독안개 (광역 독+지속 피해)',   regen:650,  regenDelay:1.5 }, // 보스7 보상
+  spacemonster:{ name:'우주괴물',  ico:'👾', color:'#5c4db1', hp:12500, spd:3.8, dmg:2000, range:500, reload:0.75,atk:'bounce',                           desc:'우주 반사탄', superDesc:'👾 외계 폭격 (다방향 반사탄)',     regen:800,  regenDelay:1.3 }, // 보스8 보상
+  abyssgod:   { name:'심연의신',   ico:'🌑', color:'#1b1b2f', hp:14000, spd:4.0, dmg:2200, range:100, reload:0.6, atk:'melee',                            desc:'심연 강타',   superDesc:'🌑 심연 흡수 (근접 광역+체력흡수)', regen:950,  regenDelay:1.2 }, // 보스9 보상
+  dragonlord: { name:'고대드래곤', ico:'🐉', color:'#6d4c00', hp:15000, spd:3.5, dmg:2500, range:340, reload:1.0, atk:'shotgun', pellets:7, spread:0.6,   desc:'화염 산탄',   superDesc:'🐉 용의 숨결 (전방 화염 연사)',     regen:1000, regenDelay:1.2 }, // 보스10 보상
+  chaosgod:   { name:'혼돈의신',   ico:'🌀', color:'#003566', hp:16000, spd:4.2, dmg:2800, range:460, reload:0.7, atk:'sirius',                           desc:'혼돈 직선+로브',superDesc:'🌀 혼돈 폭풍 (텔레포트+전방위)', regen:1100, regenDelay:1.0 }, // 보스11 보상
+  doomlord:   { name:'파멸의군주', ico:'💥', color:'#7f1d1d', hp:18000, spd:4.4, dmg:3200, range:120, reload:0.55,atk:'melee',                            desc:'파멸 강타',   superDesc:'💥 파멸 폭발 (초극한 광역)',       regen:1200, regenDelay:1.0 }, // 보스12 보상
+  eternaldark:{ name:'영원한어둠', ico:'🌌', color:'#2d2d4e', hp:20000, spd:4.6, dmg:3600, range:580, reload:0.6, atk:'sniper',                           desc:'어둠 저격',   superDesc:'🌌 어둠의 심판 (3방향 극강 저격)', regen:1300, regenDelay:0.9 }, // 보스13 보상
+  divineking: { name:'신계지배자', ico:'⚜️', color:'#78350f', hp:22000, spd:4.8, dmg:4000, range:440, reload:0.5, atk:'triple',                           desc:'신성 3방향',  superDesc:'⚜️ 신의 심판 (전방위 폭발+회복)',  regen:1500, regenDelay:0.8 }, // 보스14 보상
+  creatorsfoe:{ name:'창조자의적', ico:'🔱', color:'#1e1b4b', hp:25000, spd:5.0, dmg:4500, range:520, reload:0.45,atk:'bounce',                           desc:'창조력 반사', superDesc:'🔱 창조의 파괴 (전방위 무한 반사탄)',regen:1800, regenDelay:0.7 }, // 보스15 보상
   mystery: { name:'?',           ico:'❓', color:'#b71c1c', hp:10000,spd:3.8, dmg:2200,range:600, reload:0.8, atk:'bounce',                           desc:'??? 반사탄',   superDesc:'💥 ??? (극한 반사 폭풍)',          regen:800, regenDelay:1.0 }, // 🏆10000
 };
 
@@ -369,6 +379,8 @@ const BRAWLER_TROPHY_REQ = {
   hisoka:   5000,
   sirius:   4500,
   darkking: 0, skullking: 0, flamelord: 0, lightning: 0, finaldemon: 0,
+  icelord: 0, poisonking: 0, spacemonster: 0, abyssgod: 0, dragonlord: 0,
+  chaosgod: 0, doomlord: 0, eternaldark: 0, divineking: 0, creatorsfoe: 0,
   mystery:  50000,
 };
 
@@ -416,7 +428,9 @@ function isUnlocked(key) {
     return (trophyData.total || 0) >= 50000;
   }
   // 보스 보상 캐릭터: 해당 웨이브 클리어 시 해금
-  const bossRewards = { darkking:'1', skullking:'2', flamelord:'3', lightning:'4', finaldemon:'5' };
+  const bossRewards = { darkking:'1', skullking:'2', flamelord:'3', lightning:'4', finaldemon:'5',
+    icelord:'6', poisonking:'7', spacemonster:'8', abyssgod:'9', dragonlord:'10',
+    chaosgod:'11', doomlord:'12', eternaldark:'13', divineking:'14', creatorsfoe:'15' };
   if (bossRewards[key] !== undefined) {
     try { return !!localStorage.getItem('brawl_boss_reward_'+bossRewards[key]); } catch(e) { return false; }
   }
@@ -537,11 +551,21 @@ let bossLobTimer = 0;        // 벽 너머 로브 공격 타이머
 let bossLobWarning = null;   // 로브 경고 표시 { x, y, timer }
 
 const BOSS_WAVES = [
-  { name:'다크 킹',    ico:'👹', color:'#8b0000', hp:80000,  spd:1.8, dmg:1200, fireRate:1.5 },
-  { name:'해골 군주',  ico:'💀', color:'#37474f', hp:130000, spd:2.2, dmg:1600, fireRate:1.2 },
-  { name:'화염 군주',  ico:'🔥', color:'#e65100', hp:190000, spd:2.6, dmg:2000, fireRate:0.9 },
-  { name:'번개 황제',  ico:'⚡', color:'#1a237e', hp:260000, spd:3.1, dmg:2500, fireRate:0.7 },
-  { name:'최종 악마',  ico:'😈', color:'#4a0080', hp:350000, spd:3.6, dmg:3200, fireRate:0.5 },
+  { name:'다크 킹',      ico:'👹', color:'#8b0000', hp:80000,    spd:1.8, dmg:1200,  fireRate:1.5  },
+  { name:'해골 군주',    ico:'💀', color:'#37474f', hp:130000,   spd:2.2, dmg:1600,  fireRate:1.2  },
+  { name:'화염 군주',    ico:'🔥', color:'#e65100', hp:190000,   spd:2.6, dmg:2000,  fireRate:0.9  },
+  { name:'번개 황제',    ico:'⚡', color:'#1a237e', hp:260000,   spd:3.1, dmg:2500,  fireRate:0.7  },
+  { name:'최종 악마',    ico:'😈', color:'#4a0080', hp:350000,   spd:3.6, dmg:3200,  fireRate:0.5  },
+  { name:'빙하 군주',    ico:'🧊', color:'#0077b6', hp:480000,   spd:4.1, dmg:4000,  fireRate:0.45 },
+  { name:'독액 마왕',    ico:'☠️', color:'#2d6a4f', hp:640000,   spd:4.7, dmg:5000,  fireRate:0.4  },
+  { name:'우주 괴물',    ico:'👾', color:'#5c4db1', hp:830000,   spd:5.2, dmg:6200,  fireRate:0.35 },
+  { name:'심연의 신',    ico:'🌑', color:'#1b1b2f', hp:1050000,  spd:5.8, dmg:7600,  fireRate:0.3  },
+  { name:'고대 드래곤',  ico:'🐉', color:'#6d4c00', hp:1300000,  spd:6.3, dmg:9200,  fireRate:0.27 },
+  { name:'혼돈의 신',    ico:'🌀', color:'#003566', hp:1600000,  spd:6.8, dmg:11000, fireRate:0.24 },
+  { name:'파멸의 군주',  ico:'💥', color:'#7f1d1d', hp:1950000,  spd:7.2, dmg:13500, fireRate:0.21 },
+  { name:'영원한 어둠',  ico:'🌌', color:'#0d0d0d', hp:2350000,  spd:7.7, dmg:16000, fireRate:0.18 },
+  { name:'신계의 지배자',ico:'⚜️', color:'#78350f', hp:2800000,  spd:8.2, dmg:19000, fireRate:0.16 },
+  { name:'창조자의 적',  ico:'🔱', color:'#1e1b4b', hp:3300000,  spd:8.8, dmg:22500, fireRate:0.13 },
 ];
 
 // ────────────────────────────────────────────────────────────
@@ -890,19 +914,21 @@ function shootBullets(ent, tx, ty, isSuper=false) {
       const dist = Math.max(60, Math.hypot(tx-ent.x, ty-ent.y)); // 최소 60px 보장 (dist=0 방지)
       const ttime = Math.max(20, Math.min(60, dist/7));
       const spd = dist/ttime;
+      const lobColor = d.color || '#ff8c00';
       const b = makeBullet(ent.x, ent.y, Math.cos(a2)*spd, Math.sin(a2)*spd,
-        d.dmg, owner, '#ff8c00', 'lob', 7);
+        d.dmg, owner, lobColor, 'lob', 7);
       b.life = 0;
       b.lobLife = ttime;
       b.lobMax  = ttime;
       b.lobRadius = TS*1.5;
+      if (ent.defKey === 'poisonking') { b.poison = true; b.poisonDuration = 4.0; }
       out.push(b);
     }
   } else if (d.atk === 'sniper') {
     const spd = 14;
     const a = angle;
     const b = makeBullet(ent.x, ent.y, Math.cos(a)*spd, Math.sin(a)*spd,
-      isSuper ? d.dmg*2.5 : d.dmg, owner, '#ff69b4', 'sniper', 5);
+      isSuper ? d.dmg*2.5 : d.dmg, owner, d.color || '#ff69b4', 'sniper', 5);
     b.life = d.range/spd;
     out.push(b);
   } else if (d.atk === 'spike') {
@@ -912,7 +938,7 @@ function shootBullets(ent, tx, ty, isSuper=false) {
     for (let i = 0; i < pellets; i++) {
       const a = angle + (i - (pellets-1)/2) * 0.22;
       const b = makeBullet(ent.x, ent.y, Math.cos(a)*spd, Math.sin(a)*spd,
-        isSuper ? d.dmg*1.4 : d.dmg, owner, '#66bb6a', 'spike', 6);
+        isSuper ? d.dmg*1.4 : d.dmg, owner, d.color || '#66bb6a', 'spike', 6);
       b.life = d.range/spd;
       out.push(b);
     }
@@ -1036,6 +1062,16 @@ function chargePlayerSuper(isFromSuper) {
     flamelord:  5,
     lightning:  6,
     finaldemon: 5,
+    icelord:    6,
+    poisonking: 5,
+    spacemonster:7,
+    abyssgod:   5,
+    dragonlord: 6,
+    chaosgod:   6,
+    doomlord:   5,
+    eternaldark:5,
+    divineking: 6,
+    creatorsfoe:7,
   }[player.defKey] ?? 10;
   const charge = 100 / bulletsNeeded;
   player.superCharge = Math.min(100, player.superCharge + charge);
@@ -2178,8 +2214,8 @@ function updateBot(bot, dt) {
   }
 
   // 타겟 결정 - 자기 팀이 아닌 모든 유닛 중 가장 가까운 대상
-  // 풀숲 안에 있는 유닛은 매우 가까이 가야 발견 (숨기 효과)
-  const BUSH_DETECT = 80; // 풀숲 속 유닛은 80px 이내만 감지
+  // 풀숲 안에 있는 유닛은 같은 타일에 거의 진입해야 발견 (숨기 효과)
+  const BUSH_DETECT = 36; // 풀숲 속 유닛은 1타일(40px) 이내만 감지
   const NORMAL_DETECT = 350; // 일반 감지 거리
 
   const allUnits = [player, ...bots];
@@ -2749,7 +2785,13 @@ function drawDamageBooster() {
 // 보스전 함수들
 // ────────────────────────────────────────────────────────────
 function bossGetTargets() {
-  return [player, ...bots.filter(b => b !== bossEnt && b.team === 'ally')].filter(t => t && t.alive);
+  const allTargets = [player, ...bots.filter(b => b !== bossEnt && b.team === 'ally')].filter(t => t && t.alive);
+  return allTargets.filter(t => {
+    const d = Math.hypot(t.x - bossEnt.x, t.y - bossEnt.y);
+    if (t.inBush && d > 36) return false; // 풀숲 속이면 1타일 이내만 감지
+    if (sandyBuff && (t === player || t.team === 'ally') && d > 50) return false; // 샌디 은신 중 감지 불가
+    return true;
+  });
 }
 
 function bossShootSpread(count, dmg) {
@@ -2765,24 +2807,210 @@ function bossShootSpread(count, dmg) {
   for (let i = 0; i < count; i++) {
     const a = baseAngle + (i - (count - 1) / 2) * spread;
     const spd = 6;
+    const bossColor = (BOSS_WAVES[bossWave-1] || BOSS_WAVES[0]).color;
     const b = makeBullet(bossEnt.x, bossEnt.y, Math.cos(a)*spd, Math.sin(a)*spd,
-      dmg, 'enemy', '#ff2200', 'normal', 8);
+      dmg, 'enemy', bossColor, 'normal', 8);
     b.life = 75; bullets.push(b);
   }
   SFX.botShoot('bullet');
 }
 
-function bossDoShockwave() {
-  const cnt = bossPhase >= 3 ? 16 : 12;
-  const dmg = bossPhase >= 3 ? 1500 : 1100;
-  for (let i = 0; i < cnt; i++) {
-    const a = (Math.PI * 2 / cnt) * i;
-    const spd = 5;
-    const b = makeBullet(bossEnt.x, bossEnt.y, Math.cos(a)*spd, Math.sin(a)*spd,
-      dmg, 'enemy', '#7cb342', 'normal', 10);
-    b.life = 55; b.poison = true; b.poisonDuration = 3.0; bullets.push(b);
+function bossSpecialAttack() {
+  if (!bossEnt || !bossEnt.alive) return;
+  const targets = bossGetTargets();
+  const w = BOSS_WAVES[bossWave - 1] || BOSS_WAVES[0];
+  const baseDmg = bossEnt._bossDmg || w.dmg;
+  const wColor = w.color;
+
+  switch (bossWave) {
+    case 1: { // 다크 킹: 어둠 충격파 — 12방향 암흑탄
+      const cnt = bossPhase >= 3 ? 16 : 12;
+      for (let i = 0; i < cnt; i++) {
+        const a = (Math.PI*2/cnt)*i;
+        const b = makeBullet(bossEnt.x, bossEnt.y, Math.cos(a)*5, Math.sin(a)*5, baseDmg*0.8, 'enemy', '#8b0000', 'normal', 10);
+        b.life = 55; bullets.push(b);
+      }
+      spawnParts(bossEnt.x, bossEnt.y, '#8b0000', 30);
+      break;
+    }
+    case 2: { // 해골 군주: 뼈 소환 — 플레이어 주변 무작위 낙하
+      for (const t of targets) {
+        for (let i = 0; i < 4; i++) {
+          const ox = t.x + (Math.random()-0.5)*TS*6, oy = t.y + (Math.random()-0.5)*TS*6;
+          const ttime = 40 + Math.random()*20;
+          const bul = makeBullet(bossEnt.x, bossEnt.y, (ox-bossEnt.x)/ttime, (oy-bossEnt.y)/ttime, baseDmg*0.9, 'enemy', '#bdbdbd', 'lob', 10);
+          bul.life=0; bul.lobLife=ttime; bul.lobMax=ttime; bul.lobRadius=TS*1.2; bullets.push(bul);
+        }
+      }
+      spawnParts(bossEnt.x, bossEnt.y, '#37474f', 20);
+      break;
+    }
+    case 3: { // 화염 군주: 화염 고리 — 플레이어 주변 원형 폭탄
+      for (const t of targets) {
+        const cnt2 = 6;
+        for (let i = 0; i < cnt2; i++) {
+          const a = (Math.PI*2/cnt2)*i;
+          const ox = t.x + Math.cos(a)*TS*2.5, oy = t.y + Math.sin(a)*TS*2.5;
+          const ttime = 35;
+          const bul = makeBullet(bossEnt.x, bossEnt.y, (ox-bossEnt.x)/ttime, (oy-bossEnt.y)/ttime, baseDmg, 'enemy', '#ff6d00', 'lob', 12);
+          bul.life=0; bul.lobLife=ttime; bul.lobMax=ttime; bul.lobRadius=TS*2; bullets.push(bul);
+        }
+      }
+      spawnParts(bossEnt.x, bossEnt.y, '#e65100', 25);
+      break;
+    }
+    case 4: { // 번개 황제: 번개 연쇄 — 가장 가까운 적에 즉시 데미지 후 연쇄
+      let chain = targets.slice().sort((a,b2) => Math.hypot(a.x-bossEnt.x,a.y-bossEnt.y) - Math.hypot(b2.x-bossEnt.x,b2.y-bossEnt.y));
+      chain.slice(0, 3).forEach((t, idx) => {
+        setTimeout(() => {
+          if (!t.alive) return;
+          damage(t, baseDmg*1.2, bossEnt, true);
+          checkKill(t, 'enemy');
+          spawnParts(t.x, t.y, '#ffe57f', 15);
+          for (let i=0;i<6;i++){const a=(Math.PI*2/6)*i;const b=makeBullet(t.x,t.y,Math.cos(a)*8,Math.sin(a)*8,baseDmg*0.4,'enemy','#ffe57f','normal',6);b.life=20;bullets.push(b);}
+        }, idx*180);
+      });
+      spawnParts(bossEnt.x, bossEnt.y, '#1a237e', 20);
+      break;
+    }
+    case 5: { // 최종 악마: 공포 인력 — 모든 타겟을 보스 쪽으로 끌어당김
+      for (const t of targets) {
+        const dx = bossEnt.x - t.x, dy = bossEnt.y - t.y;
+        const dist = Math.hypot(dx, dy) || 1;
+        const pull = Math.min(dist * 0.4, TS*5);
+        t.x += (dx/dist)*pull; t.y += (dy/dist)*pull; unstuck(t);
+        spawnParts(t.x, t.y, '#4a0080', 12);
+      }
+      spawnParts(bossEnt.x, bossEnt.y, '#4a0080', 40);
+      SFX.lobExplode();
+      break;
+    }
+    case 6: { // 빙하 군주: 빙결 폭풍 — 슬로우 탄환 전방위
+      const cnt3 = 14;
+      for (let i=0;i<cnt3;i++){
+        const a=(Math.PI*2/cnt3)*i;
+        const b=makeBullet(bossEnt.x,bossEnt.y,Math.cos(a)*5,Math.sin(a)*5,baseDmg*0.7,'enemy','#aee8ff','normal',10);
+        b.life=60; b.isIce=true; bullets.push(b);
+      }
+      // 범위 내 타겟 슬로우
+      for (const t of targets) {
+        if (Math.hypot(t.x-bossEnt.x,t.y-bossEnt.y)<TS*6) { t.slowTimer=(t.slowTimer||0)+3; spawnParts(t.x,t.y,'#aee8ff',8); }
+      }
+      spawnParts(bossEnt.x, bossEnt.y, '#0077b6', 30);
+      break;
+    }
+    case 7: { // 독액 마왕: 독안개 — 광역 독 + 독 투척
+      for (const t of targets) {
+        if (Math.hypot(t.x-bossEnt.x,t.y-bossEnt.y)<TS*8) {
+          t.poisonTimer=5; t.poisonDmg=Math.round(baseDmg*0.15); spawnParts(t.x,t.y,'#2d6a4f',10);
+        }
+      }
+      for (let i=0;i<8;i++){
+        const a=(Math.PI*2/8)*i;
+        const ox=bossEnt.x+Math.cos(a)*TS*3, oy=bossEnt.y+Math.sin(a)*TS*3;
+        const tt=30;
+        const b=makeBullet(bossEnt.x,bossEnt.y,(ox-bossEnt.x)/tt,(oy-bossEnt.y)/tt,baseDmg*0.6,'enemy','#2d6a4f','lob',10);
+        b.life=0;b.lobLife=tt;b.lobMax=tt;b.lobRadius=TS*1.8;bullets.push(b);
+      }
+      spawnParts(bossEnt.x, bossEnt.y, '#2d6a4f', 35);
+      break;
+    }
+    case 8: { // 우주 괴물: 중력 폭탄 — 타겟 끌어당긴 뒤 폭발
+      for (const t of targets) {
+        const dx=bossEnt.x-t.x,dy=bossEnt.y-t.y,dist=Math.hypot(dx,dy)||1;
+        const pull=Math.min(dist*0.35,TS*4);
+        t.x+=(dx/dist)*pull;t.y+=(dy/dist)*pull;unstuck(t);
+      }
+      setTimeout(()=>{
+        if(!bossEnt||!bossEnt.alive)return;
+        for(const t of bossGetTargets()){
+          const d=Math.hypot(t.x-bossEnt.x,t.y-bossEnt.y);
+          if(d<TS*5){damage(t,baseDmg*1.5,bossEnt,true);checkKill(t,'enemy');spawnParts(t.x,t.y,'#b39ddb',10);}
+        }
+        spawnParts(bossEnt.x,bossEnt.y,'#5c4db1',50);
+      }, 600);
+      spawnParts(bossEnt.x, bossEnt.y, '#5c4db1', 20);
+      break;
+    }
+    case 9: { // 심연의 신: 생명력 흡수 — 타겟 HP 흡수해 보스 회복
+      let totalAbsorb = 0;
+      for (const t of targets) {
+        const absorbAmt = Math.min(t.hp * 0.25, baseDmg);
+        damage(t, absorbAmt, bossEnt, true); checkKill(t, 'enemy');
+        totalAbsorb += absorbAmt; spawnParts(t.x, t.y, '#1b1b2f', 10);
+      }
+      bossEnt.hp = Math.min(bossEnt.maxHp, bossEnt.hp + totalAbsorb);
+      spawnParts(bossEnt.x, bossEnt.y, '#9c27b0', 30);
+      SFX.lobExplode();
+      break;
+    }
+    case 10: { // 고대 드래곤: 용의 숨결 — 가장 가까운 타겟 향해 넓은 화염 콘
+      if (!targets.length) break;
+      const tgt = targets[0];
+      const baseA = Math.atan2(tgt.y-bossEnt.y, tgt.x-bossEnt.x);
+      for (let i=0;i<10;i++){
+        const a=baseA+(i-4.5)*0.18;
+        const b=makeBullet(bossEnt.x,bossEnt.y,Math.cos(a)*8,Math.sin(a)*8,baseDmg*0.85,'enemy','#ff6d00','normal',8);
+        b.life=60;bullets.push(b);
+      }
+      spawnParts(bossEnt.x, bossEnt.y, '#6d4c00', 25);
+      break;
+    }
+    case 11: { // 혼돈의 신: 혼돈 폭풍 — 불규칙 방향 20발
+      for (let i=0;i<20;i++){
+        const a=Math.random()*Math.PI*2;
+        const spd=4+Math.random()*5;
+        const b=makeBullet(bossEnt.x,bossEnt.y,Math.cos(a)*spd,Math.sin(a)*spd,baseDmg*0.7,'enemy','#0d6efd','normal',8);
+        b.life=50+Math.random()*30;bullets.push(b);
+      }
+      spawnParts(bossEnt.x, bossEnt.y, '#003566', 30);
+      break;
+    }
+    case 12: { // 파멸의 군주: 파멸 폭발 — 초광역 즉발 데미지
+      const radius=TS*9;
+      for (const t of targets) {
+        const d=Math.hypot(t.x-bossEnt.x,t.y-bossEnt.y);
+        if(d<radius){damage(t,baseDmg*(1-d/radius*0.4),bossEnt,true);checkKill(t,'enemy');spawnParts(t.x,t.y,'#7f1d1d',12);}
+      }
+      for(let i=0;i<20;i++){const a=(Math.PI*2/20)*i;const b=makeBullet(bossEnt.x,bossEnt.y,Math.cos(a)*9,Math.sin(a)*9,baseDmg*0.6,'enemy','#ff4444','normal',8);b.life=60;bullets.push(b);}
+      spawnParts(bossEnt.x, bossEnt.y, '#7f1d1d', 60);
+      SFX.lobExplode();
+      break;
+    }
+    case 13: { // 영원한 어둠: 어둠 광선 — 3방향 관통 저격
+      if (!targets.length) break;
+      const tgt2=targets[0];
+      const baseA2=Math.atan2(tgt2.y-bossEnt.y,tgt2.x-bossEnt.x);
+      [-0.3,0,0.3].forEach(off=>{
+        const b=makeBullet(bossEnt.x,bossEnt.y,Math.cos(baseA2+off)*16,Math.sin(baseA2+off)*16,baseDmg*1.5,'enemy','#c0c0ff','sniper',7);
+        b.life=70;b.pierce=true;bullets.push(b);
+      });
+      spawnParts(bossEnt.x, bossEnt.y, '#2d2d4e', 25);
+      break;
+    }
+    case 14: { // 신계의 지배자: 신의 심판 — 전방위 폭발 + 보스 자신 회복
+      const cnt4=22;
+      for(let i=0;i<cnt4;i++){const a=(Math.PI*2/cnt4)*i;const b=makeBullet(bossEnt.x,bossEnt.y,Math.cos(a)*8,Math.sin(a)*8,baseDmg*0.9,'enemy','#ffd700','normal',8);b.life=60;bullets.push(b);}
+      bossEnt.hp=Math.min(bossEnt.maxHp, bossEnt.hp+bossEnt.maxHp*0.05);
+      spawnParts(bossEnt.x, bossEnt.y, '#78350f', 40);
+      spawnParts(bossEnt.x, bossEnt.y, '#ffd700', 20);
+      break;
+    }
+    case 15: { // 창조자의 적: 창조의 분노 — 전방위 다중 반사탄
+      for(let i=0;i<16;i++){
+        const a=(Math.PI*2/16)*i;
+        const b=makeBullet(bossEnt.x,bossEnt.y,Math.cos(a)*11,Math.sin(a)*11,baseDmg*0.8,'enemy','#e040fb','bounce',8);
+        b.life=100;b.bounces=8;b.ricoShot=true;bullets.push(b);
+      }
+      spawnParts(bossEnt.x, bossEnt.y, '#1e1b4b', 50);
+      break;
+    }
+    default: { // 알 수 없는 웨이브: 기본 충격파
+      const cnt5=12;
+      for(let i=0;i<cnt5;i++){const a=(Math.PI*2/cnt5)*i;const b=makeBullet(bossEnt.x,bossEnt.y,Math.cos(a)*5,Math.sin(a)*5,baseDmg*0.8,'enemy',wColor,'normal',10);b.life=55;bullets.push(b);}
+      spawnParts(bossEnt.x, bossEnt.y, wColor, 30);
+    }
   }
-  spawnParts(bossEnt.x, bossEnt.y, '#7cb342', 35);
   SFX.lobExplode();
 }
 
@@ -2791,7 +3019,7 @@ function bossLobAttack() {
   if (!targets.length) return;
   const t = targets[Math.random() * targets.length | 0];
   // 2초 경고 표시 먼저
-  bossLobWarning = { x: t.x, y: t.y, timer: 2.0 };
+  bossLobWarning = { x: t.x, y: t.y, timer: 2.8 };
 }
 
 function bossFireLob(wx, wy) {
@@ -2799,8 +3027,9 @@ function bossFireLob(wx, wy) {
   const ttime = Math.max(20, Math.min(80, dist / 7));
   const spd2 = dist / ttime;
   const a = Math.atan2(wy - bossEnt.y, wx - bossEnt.x);
+  const bossLobColor = (BOSS_WAVES[bossWave-1] || BOSS_WAVES[0]).color;
   const b = makeBullet(bossEnt.x, bossEnt.y, Math.cos(a)*spd2, Math.sin(a)*spd2,
-    (bossEnt._bossDmg || 1200) * 5, 'enemy', '#ff2200', 'lob', 12);
+    (bossEnt._bossDmg || 1200) * 5, 'enemy', bossLobColor, 'lob', 12);
   b.life = 0; b.lobLife = ttime; b.lobMax = ttime; b.lobRadius = TS * 2.0; b.isBossLob = true;
   bullets.push(b);
   spawnParts(bossEnt.x, bossEnt.y, '#ff4400', 10);
@@ -2859,11 +3088,12 @@ function updateBoss(dt) {
     spawnParts(bossEnt.x, bossEnt.y, '#ff0000', 50);
     spawnParts(bossEnt.x, bossEnt.y, '#ffffff', 20);
     SFX.superActivate();
-    // 페이즈별 강화
+    // 페이즈별 강화 (웨이브 기본값 기준 배율)
+    const wBase = BOSS_WAVES[bossWave - 1] || BOSS_WAVES[0];
     if (bossPhase === 2) {
-      bossEnt._bossSpd = 2.3; bossEnt._bossDmg = 1500; bossEnt._bossFireRate = 1.0;
+      bossEnt._bossSpd = wBase.spd * 1.1; bossEnt._bossDmg = wBase.dmg * 1.1; bossEnt._bossFireRate = wBase.fireRate * 0.88;
     } else if (bossPhase === 3) {
-      bossEnt._bossSpd = 3.0; bossEnt._bossDmg = 1800; bossEnt._bossFireRate = 0.65;
+      bossEnt._bossSpd = wBase.spd * 1.2; bossEnt._bossDmg = wBase.dmg * 1.2; bossEnt._bossFireRate = wBase.fireRate * 0.75;
     }
   }
 
@@ -2890,22 +3120,24 @@ function updateBoss(dt) {
   bossAttackTimer -= dt;
   if (bossAttackTimer <= 0) {
     bossAttackTimer = bossEnt._bossFireRate || 1.5;
-    const cnt = bossPhase === 1 ? 3 : bossPhase === 2 ? 5 : 7;
+    const cnt = bossPhase === 1 ? 3 : bossPhase === 2 ? 4 : 5;
     bossShootSpread(cnt, bossEnt._bossDmg || 1200);
   }
 
-  // 충격파
+  // 충격파 (로브 경고 중엔 발동 안 함)
   bossShockwaveTimer -= dt;
-  if (bossShockwaveTimer <= 0) {
-    bossShockwaveTimer = bossPhase >= 3 ? 5 : 8;
-    bossDoShockwave();
+  if (bossShockwaveTimer <= 0 && !bossLobWarning) {
+    bossShockwaveTimer = bossPhase >= 3 ? 7 : 10;
+    bossSpecialAttack();
+    bossLobTimer = Math.max(bossLobTimer, 5); // 충격파 후 5초간 로브 유예
   }
 
-  // 벽 너머 로브 공격
+  // 벽 너머 로브 공격 (충격파 직후엔 발동 안 함)
   bossLobTimer -= dt;
-  if (bossLobTimer <= 0) {
-    bossLobTimer = bossPhase >= 3 ? 4 : bossPhase === 2 ? 6 : 8;
+  if (bossLobTimer <= 0 && !bossLobWarning) {
+    bossLobTimer = bossPhase >= 3 ? 6 : bossPhase === 2 ? 8 : 10;
     bossLobAttack();
+    bossShockwaveTimer = Math.max(bossShockwaveTimer, 5); // 로브 후 5초간 충격파 유예
   }
   // 경고 타이머 → 만료 시 발사
   if (bossLobWarning) {
@@ -2920,7 +3152,7 @@ function updateBoss(dt) {
   if (bossPhase >= 2) {
     bossMinionTimer -= dt;
     if (bossMinionTimer <= 0) {
-      bossMinionTimer = bossPhase >= 3 ? 10 : 18;
+      bossMinionTimer = bossPhase >= 3 ? 15 : 22;
       bossSpawnMinion();
     }
   }
@@ -3099,17 +3331,21 @@ function handlePlayerInput(dt) {
       if (keys['ArrowDown']||keys['s']||keys['S']) dy += 1;
       if (dx && dy) { dx*=0.707; dy*=0.707; }
     }
-    moveEntity(player, dx*player.d.spd, dy*player.d.spd);
+    const slowMult = (player.slowTimer > 0) ? 0.35 : 1.0;
+    moveEntity(player, dx*player.d.spd*slowMult, dy*player.d.spd*slowMult);
   }
 
   // 오른쪽 조이스틱 조준 및 자동 발사
   if (joyR.active) {
     const len = Math.hypot(joyR.dx, joyR.dy);
     if (len > 0.15 && player) {
-      const jrLen = len;
-      const jrDist = jrLen * (player.d.range || 300);
-      mouseWorld.x = Math.max(TS, Math.min(MX*TS-TS, player.x + (joyR.dx/jrLen)*jrDist));
-      mouseWorld.y = Math.max(TS, Math.min(MY*TS-TS, player.y + (joyR.dy/jrLen)*jrDist));
+      const nx = joyR.dx / len, ny = joyR.dy / len;
+      const ex = nx > 0 ? MX*TS-TS-player.x : player.x-TS;
+      const ey = ny > 0 ? MY*TS-TS-player.y : player.y-TS;
+      const maxEdge = (nx===0 ? Math.abs(ey/ny) : ny===0 ? Math.abs(ex/nx) : Math.min(Math.abs(ex/nx), Math.abs(ey/ny))) * 0.88;
+      const jrDist = Math.min(len * (player.d.range || 300), maxEdge);
+      mouseWorld.x = player.x + nx * jrDist;
+      mouseWorld.y = player.y + ny * jrDist;
     }
   }
 
@@ -3736,6 +3972,143 @@ function activateSuper() {
       b.life = 65; b.isSuper = true; bullets.push(b);
     }
 
+  } else if (key === 'icelord') {
+    // ❄️ 빙결 폭풍: 전방위 냉기탄 + 슬로우
+    spawnParts(player.x, player.y, '#0077b6', 40);
+    spawnParts(player.x, player.y, '#aee8ff', 20);
+    for (let i = 0; i < 18; i++) {
+      const a = (Math.PI*2/18)*i;
+      const b = makeBullet(player.x, player.y, Math.cos(a)*7, Math.sin(a)*7, 2200, 'player', '#aee8ff', 'normal', 7);
+      b.life = 55; b.isSuper = true; bullets.push(b);
+    }
+    for (const t of getTargets('player')) {
+      if (!t.alive) continue;
+      if (Math.hypot(t.x-player.x, t.y-player.y) < TS*5) { t.slowTimer = (t.slowTimer||0) + 3; spawnParts(t.x, t.y, '#aee8ff', 6); }
+    }
+
+  } else if (key === 'poisonking') {
+    // ☠️ 독안개: 범위 내 적 독 + 다방향 독 투척
+    spawnParts(player.x, player.y, '#2d6a4f', 50);
+    for (const t of getTargets('player')) {
+      if (!t.alive) continue;
+      if (Math.hypot(t.x-player.x, t.y-player.y) < TS*6) { t.poisonTimer = 6; t.poisonDmg = 400; spawnParts(t.x, t.y, '#2d6a4f', 8); }
+    }
+    for (let i = 0; i < 8; i++) {
+      const a = (Math.PI*2/8)*i;
+      const tx2 = player.x + Math.cos(a)*200, ty2 = player.y + Math.sin(a)*200;
+      const ttime = 30;
+      const b = makeBullet(player.x, player.y, (tx2-player.x)/ttime, (ty2-player.y)/ttime, 2000, 'player', '#2d6a4f', 'lob', 14);
+      b.lobLife = ttime; b.lobMax = ttime; b.lobRadius = TS*2.5; b.isSuper = true; bullets.push(b);
+    }
+
+  } else if (key === 'spacemonster') {
+    // 👾 외계 폭격: 마우스 위치로 대형 반사탄 12발
+    spawnParts(player.x, player.y, '#5c4db1', 40);
+    for (let i = 0; i < 12; i++) {
+      const a = (Math.PI*2/12)*i;
+      const b = makeBullet(player.x, player.y, Math.cos(a)*11, Math.sin(a)*11, 2500, 'player', '#b39ddb', 'bounce', 8);
+      b.life = 90; b.bounces = 8; b.ricoShot = true; b.isSuper = true; bullets.push(b);
+    }
+
+  } else if (key === 'abyssgod') {
+    // 🌑 심연 흡수: 근처 광역 데미지 + 체력 흡수
+    const agRadius = TS * 6;
+    spawnParts(player.x, player.y, '#1b1b2f', 60);
+    spawnParts(player.x, player.y, '#9c27b0', 25);
+    let totalAbsorb = 0;
+    for (const t of getTargets('player')) {
+      if (!t.alive) continue;
+      const dd = Math.hypot(t.x-player.x, t.y-player.y);
+      if (dd < agRadius) {
+        const dmgAmt = 3500*(1-dd/agRadius*0.3);
+        damage(t, dmgAmt, player, true);
+        checkKill(t, 'player');
+        totalAbsorb += dmgAmt * 0.3;
+        spawnParts(t.x, t.y, '#1b1b2f', 10);
+      }
+    }
+    player.hp = Math.min(player.maxHp, player.hp + totalAbsorb);
+
+  } else if (key === 'dragonlord') {
+    // 🐉 용의 숨결: 전방 화염 산탄 3연발
+    spawnParts(player.x, player.y, '#6d4c00', 30);
+    for (let wave = 0; wave < 3; wave++) {
+      setTimeout(() => {
+        if (!player||!player.alive) return;
+        for (let i = 0; i < 9; i++) {
+          const a = angle + (i - 4) * 0.18;
+          const b = makeBullet(player.x, player.y, Math.cos(a)*9, Math.sin(a)*9, 2800, 'player', '#ff6d00', 'normal', 7);
+          b.life = 50; b.isSuper = true; bullets.push(b);
+        }
+        spawnParts(player.x, player.y, '#ff6d00', 10);
+      }, wave * 180);
+    }
+
+  } else if (key === 'chaosgod') {
+    // 🌀 혼돈 폭풍: 마우스로 텔레포트 + 전방위 혼돈탄
+    const cx = Math.max(TS, Math.min(MX*TS-TS, mouseWorld.x));
+    const cy = Math.max(TS, Math.min(MY*TS-TS, mouseWorld.y));
+    spawnParts(player.x, player.y, '#003566', 20);
+    player.x = cx; player.y = cy; unstuck(player);
+    spawnParts(player.x, player.y, '#0d6efd', 40);
+    for (let i = 0; i < 20; i++) {
+      const a = (Math.PI*2/20)*i;
+      const b = makeBullet(player.x, player.y, Math.cos(a)*9, Math.sin(a)*9, 3000, 'player', '#0d6efd', 'normal', 7);
+      b.life = 60; b.isSuper = true; bullets.push(b);
+    }
+
+  } else if (key === 'doomlord') {
+    // 💥 파멸 폭발: finaldemon보다 큰 범위 + 더 강한 폭발
+    const dlRadius = TS * 10;
+    spawnParts(player.x, player.y, '#7f1d1d', 80);
+    spawnParts(player.x, player.y, '#ff6b6b', 40);
+    for (const t of getTargets('player')) {
+      if (!t.alive) continue;
+      const dd = Math.hypot(t.x-player.x, t.y-player.y);
+      if (dd < dlRadius) {
+        damage(t, 5500*(1-dd/dlRadius*0.25), player, true);
+        checkKill(t, 'player');
+        spawnParts(t.x, t.y, '#7f1d1d', 14);
+      }
+    }
+    for (let i = 0; i < 24; i++) {
+      const a = (Math.PI*2/24)*i;
+      const b = makeBullet(player.x, player.y, Math.cos(a)*11, Math.sin(a)*11, 3500, 'player', '#ff4444', 'normal', 8);
+      b.life = 70; b.isSuper = true; bullets.push(b);
+    }
+
+  } else if (key === 'eternaldark') {
+    // 🌌 어둠의 심판: 3방향 극강 저격탄
+    spawnParts(player.x, player.y, '#2d2d4e', 40);
+    spawnParts(player.x, player.y, '#ffffff', 15);
+    const angles = [angle - 0.25, angle, angle + 0.25];
+    for (const a of angles) {
+      const b = makeBullet(player.x, player.y, Math.cos(a)*18, Math.sin(a)*18, 8000, 'player', '#c0c0ff', 'normal', 9);
+      b.life = 80; b.isSuper = true; b.pierce = true; bullets.push(b);
+    }
+
+  } else if (key === 'divineking') {
+    // ⚜️ 신의 심판: 전방위 신성탄 + 자신 체력 회복
+    spawnParts(player.x, player.y, '#78350f', 50);
+    spawnParts(player.x, player.y, '#ffd700', 30);
+    for (let i = 0; i < 22; i++) {
+      const a = (Math.PI*2/22)*i;
+      const b = makeBullet(player.x, player.y, Math.cos(a)*10, Math.sin(a)*10, 4000, 'player', '#ffd700', 'normal', 8);
+      b.life = 65; b.isSuper = true; bullets.push(b);
+    }
+    player.hp = Math.min(player.maxHp, player.hp + player.maxHp * 0.4);
+    spawnParts(player.x, player.y, '#00ff88', 20);
+
+  } else if (key === 'creatorsfoe') {
+    // 🔱 창조의 파괴: 전방위 무한 반사탄
+    spawnParts(player.x, player.y, '#1e1b4b', 60);
+    spawnParts(player.x, player.y, '#e040fb', 30);
+    for (let i = 0; i < 16; i++) {
+      const a = (Math.PI*2/16)*i;
+      const b = makeBullet(player.x, player.y, Math.cos(a)*13, Math.sin(a)*13, 4500, 'player', '#e040fb', 'bounce', 9);
+      b.life = 120; b.bounces = 15; b.ricoShot = true; b.isSuper = true; bullets.push(b);
+    }
+
   } else if (key === 'kenji') {
     // ❌ 환영 참격: 마우스 위치로 날아가 X자 4방향 공격 후 원래 자리 귀환
     const ox = player.x, oy = player.y;
@@ -4084,7 +4457,7 @@ canvas.addEventListener('contextmenu', e => e.preventDefault());
       const rawDx = touch.clientX - (r.left + r.width / 2);
       const rawDy = touch.clientY - (r.top  + r.height / 2);
       const dragLen = Math.hypot(rawDx, rawDy);
-      const wasTap = dragLen < 10; // 10px 미만이면 탭
+      const wasTap = dragLen < 30; // 30px 미만이면 탭 (자동조준)
       joyR.active = false; joyR.dx = 0; joyR.dy = 0; resetKnob(mcRightKnob);
       if (state !== 'playing' || !player) continue;
       if (wasTap) {
@@ -4108,11 +4481,14 @@ canvas.addEventListener('contextmenu', e => e.preventDefault());
         mouseWorld.x = nearest.x;
         mouseWorld.y = nearest.y;
       } else {
-        // 드래그: 조이스틱 방향으로 조준 (맵 범위 내로 제한)
+        // 드래그: 조이스틱 방향으로 조준 (맵 끝벽 안쪽으로 제한)
         const nx = rawDx / dragLen, ny = rawDy / dragLen;
-        const aimDist = Math.min(dragLen / MCR, 1) * (player.d.range || 300);
-        mouseWorld.x = Math.max(TS, Math.min(MX*TS-TS, player.x + nx * aimDist));
-        mouseWorld.y = Math.max(TS, Math.min(MY*TS-TS, player.y + ny * aimDist));
+        const ex = nx > 0 ? MX*TS-TS-player.x : player.x-TS;
+        const ey = ny > 0 ? MY*TS-TS-player.y : player.y-TS;
+        const maxEdge = (nx===0 ? Math.abs(ey/ny) : ny===0 ? Math.abs(ex/nx) : Math.min(Math.abs(ex/nx), Math.abs(ey/ny))) * 0.88;
+        const aimDist = Math.min(Math.min(dragLen/MCR,1) * (player.d.range||300), maxEdge);
+        mouseWorld.x = player.x + nx * aimDist;
+        mouseWorld.y = player.y + ny * aimDist;
       }
       tryShoot(false);
     }
@@ -4243,6 +4619,7 @@ function loop(ts) {
   // 버프 타이머
   // (8비트 부스터는 HP로만 소멸 - 타이머 없음)
   if (sandyBuff)  { sandyBuff.timer  -= dt; if (sandyBuff.timer <=0) sandyBuff=null; }
+  if (player && player.slowTimer > 0) player.slowTimer -= dt;
   updateHealTurret(dt);
 
   // 모드별
@@ -4284,25 +4661,27 @@ function loop(ts) {
     updateKnockout(dt);
   }
 
-  // ── 부활 시스템 (팀전 중 녹아웃 제외) ──
+  // ── 부활 시스템 (솔로/녹아웃 제외한 모든 팀전) ──
   if (!player.alive && selMode !== 'solo' && selMode !== 'knockout') {
-    // 바운티: 타이머 종료 시 부활 대기 중이어도 즉시 끝냄
+    // 바운티: 타이머 종료 시 즉시 끝냄
     if (selMode === 'bounty' && bountyTime <= 0) {
       const eKills = bots.filter(b=>b.team==='enemy').reduce((s,b)=>s+(b.kills||0),0);
       endGame(kills > eKills); return;
     }
 
-    // 살아있거나 부활 대기 중인 적이 하나도 없으면 승리 (보스전: 보스만 체크)
-    const activeOrWaitingEnemies = selMode === 'boss'
-      ? (bossEnt && bossEnt.alive ? 1 : 0)
-      : bots.filter(b => b.team === 'enemy' && (b.alive || b.botRespawnTimer > 0)).length;
-    if (activeOrWaitingEnemies === 0) { endGame(true); return; }
+    // 하이스트/브롤볼은 금고HP/골로 승패가 결정되므로 전멸 체크 생략
+    if (selMode !== 'heist' && selMode !== 'brawlball') {
+      // 살아있거나 부활 대기 중인 적이 없으면 승리
+      const activeOrWaitingEnemies = selMode === 'boss'
+        ? (bossEnt && bossEnt.alive ? 1 : 0)
+        : bots.filter(b => b.team === 'enemy' && (b.alive || b.botRespawnTimer > 0)).length;
+      if (activeOrWaitingEnemies === 0) { endGame(true); return; }
 
-    // 살아있는 아군이 하나도 없으면 패배
-    const activeAllies = bots.filter(b => b.team === 'ally' && b.alive).length;
-    if (activeAllies === 0) {
-      endGame(false); return;
+      // 살아있는 아군이 없으면 패배
+      const activeAllies = bots.filter(b => b.team === 'ally' && b.alive).length;
+      if (activeAllies === 0) { endGame(false); return; }
     }
+
     if (!isDead) {
       // 방금 죽음 → 부활 대기 시작
       isDead = true;
@@ -4495,7 +4874,7 @@ function startGame() {
   const bk = Object.keys(DEFS).filter(k => !HXH_KEYS.includes(k));
   const bkNoPlayerOnly = bk.filter(k => !PLAYER_ONLY_KEYS.includes(k)); // 솔로봇·적봇용
   // 보스 보상 캐릭터는 어려운 보스일수록 낮은 등장 확률 (일반=10, 보스1=3, 보스2=2, 보스3=1.5, 보스4=1, 보스5=0.5)
-  const BOSS_WEIGHTS = { darkking:3, skullking:2, flamelord:1.5, lightning:1, finaldemon:0.5 };
+  const BOSS_WEIGHTS = { darkking:3, skullking:2, flamelord:1.5, lightning:1, finaldemon:0.5, icelord:0.4, poisonking:0.35, spacemonster:0.3, abyssgod:0.25, dragonlord:0.2, chaosgod:0.18, doomlord:0.15, eternaldark:0.12, divineking:0.1, creatorsfoe:0.08 };
   function weightedRandKey(pool) {
     const weights = pool.map(k => BOSS_WEIGHTS[k] ?? 10);
     const total = weights.reduce((a,b)=>a+b,0);
@@ -4740,13 +5119,17 @@ function buildMenu() {
   });
 
   const br = document.getElementById('brawlerRow');
-  const HXH_KEYS2 = ['gon','leorio','kurapika','killua','hisoka','mystery','darkking','skullking','flamelord','lightning','finaldemon'];
+  const HXH_KEYS2 = ['gon','leorio','kurapika','killua','hisoka','mystery','darkking','skullking','flamelord','lightning','finaldemon','icelord','poisonking','spacemonster','abyssgod','dragonlord','chaosgod','doomlord','eternaldark','divineking','creatorsfoe'];
   Object.entries(DEFS).forEach(([k,d]) => {
     const unlocked = isUnlocked(k);
     const req = BRAWLER_TROPHY_REQ[k];
     const isHxH2 = HXH_KEYS2.includes(k);
     const isMystery = k === 'mystery';
-    const bossRewardMap = { darkking:'👹 보스1 보상', skullking:'💀 보스2 보상', flamelord:'🔥 보스3 보상', lightning:'⚡ 보스4 보상', finaldemon:'😈 보스5 보상' };
+    const bossRewardMap = {
+      darkking:'👹 보스1 보상', skullking:'💀 보스2 보상', flamelord:'🔥 보스3 보상', lightning:'⚡ 보스4 보상', finaldemon:'😈 보스5 보상',
+      icelord:'🧊 보스6 보상', poisonking:'☠️ 보스7 보상', spacemonster:'👾 보스8 보상', abyssgod:'🌑 보스9 보상', dragonlord:'🐉 보스10 보상',
+      chaosgod:'🌀 보스11 보상', doomlord:'💥 보스12 보상', eternaldark:'🌌 보스13 보상', divineking:'⚜️ 보스14 보상', creatorsfoe:'🔱 보스15 보상'
+    };
     const eventTag2 = isMystery
       ? `<span class="event-tag" style="background:linear-gradient(90deg,#b71c1c,#000);">🔥 나만의 브롤러</span>`
       : bossRewardMap[k]
