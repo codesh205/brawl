@@ -557,7 +557,7 @@ let bossLobTimer = 0;        // 벽 너머 로브 공격 타이머
 let bossLobWarning = null;   // 로브 경고 표시 { x, y, timer }
 
 const BOSS_WAVES = [
-  { name:'다크 킹',      ico:'👹', color:'#8b0000', hp:80000,    spd:1.8, dmg:1200,  fireRate:1.5  },
+  { name:'다크 킹',      ico:'👹', color:'#8b0000', hp:55000,    spd:1.6, dmg:800,   fireRate:2.0  },
   { name:'해골 군주',    ico:'💀', color:'#37474f', hp:130000,   spd:2.2, dmg:1600,  fireRate:1.2  },
   { name:'화염 군주',    ico:'🔥', color:'#e65100', hp:190000,   spd:2.6, dmg:2000,  fireRate:0.9  },
   { name:'번개 황제',    ico:'⚡', color:'#1a237e', hp:260000,   spd:3.1, dmg:2500,  fireRate:0.7  },
@@ -4584,7 +4584,7 @@ canvas.addEventListener('contextmenu', e => e.preventDefault());
       const rawDx = touch.clientX - (r.left + r.width / 2);
       const rawDy = touch.clientY - (r.top  + r.height / 2);
       const dragLen = Math.hypot(rawDx, rawDy);
-      const wasTap = dragLen < 55; // 55px 미만이면 탭 (자동조준)
+      const wasTap = dragLen < 15; // 15px 미만이면 탭 (자동조준)
       joyR.active = false; joyR.dx = 0; joyR.dy = 0; resetKnob(mcRightKnob);
       if (state !== 'playing' || !player) continue;
       if (wasTap) {
