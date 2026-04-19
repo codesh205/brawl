@@ -536,7 +536,12 @@ let sandyBuff = null;    // 샌디 은신 { timer }
 let heistHp = null;      // 하이스트: {ally, enemy} 금고 체력
 let siegeTimer = 0;      // 시즈: 남은 시간
 let siegeBolts = null;   // 시즈: {ally, enemy} 볼트 수
-let siegeBot = null;     // 시즈: 현재 로봇
+let siegeBot = null;     // 시즈: 아군 로봇
+let siegeEnemyBot = null;// 시즈: 적 로봇
+let siegeIke = null;     // 시즈: {ally, enemy} IKE 기지 HP
+let siegeIkeShootTimer = { ally: 2, enemy: 2 }; // IKE 사격 타이머
+let siegeEnemyBolts = 0; // 적 볼트 카운터
+let siegeEnemyBoltTimer = 0; // 적 볼트 획득 타이머
 let brawlBall = null;    // 브롤볼: {x,y,vx,vy,holder}
 
 // 보스전
@@ -2613,31 +2618,139 @@ function drawBrawlBall() {
   ctx.restore();
 }
 
-// 시즈: 볼트 모아 로봇 보내기
+// IKE 기지 위치 상수
+const SIEGE_ALLY_IKE  = { x: 2*TS, y: Math.floor(15/2)*TS };
+const SIEGE_ENEMY_IKE = { x: (20-2)*TS, y: Math.floor(15/2)*TS };
+const SIEGE_IKE_MAX_HP = 40000;
+
+function spawnSiegeBot(team) {
+  const isAlly = team === 'ally';
+  const sp = safeSpawn(isAlly ? 'left' : 'right');
+  const bot = makeEntity(sp.x, sp.y, 'frank', team);
+  bot.hp = bot.maxHp = 25000;
+  bot.d = Object.assign({}, bot.d, {
+    ico: '🤖', name: isAlly ? '아군 시즈봇' : '적 시즈봇',
+    spd: 2.2, dmg: 1400, range: 160, color: isAlly ? '#ffe100' : '#ff4444'
+  });
+  bot._siege = true;
+  bot._siegeTeam = team;
+  bots.push(bot);
+  spawnParts(sp.x, sp.y, isAlly ? '#ffe100' : '#ff4444', 25);
+  SFX.superActivate();
+  return bot;
+}
+
 function updateSiege(dt) {
+  if (!siegeIke) return;
   siegeTimer -= dt;
-  // 볼트 스폰 (중앙 근처)
-  if (Math.random()<dt*0.5) {
-    const tx2=8+Math.random()*4|0, ty2=5+Math.random()*5|0;
-    if (map[ty2]&&map[ty2][tx2]===0) gems.push({x:tx2*TS+TS/2,y:ty2*TS+TS/2,alive:true,bob:0,isBolt:true});
+
+  // 볼트 스폰 (맵 중앙)
+  if (Math.random() < dt * 0.6) {
+    const tx2 = 7 + (Math.random()*6|0), ty2 = 4 + (Math.random()*7|0);
+    if (map[ty2] && map[ty2][tx2] === 0)
+      gems.push({ x: tx2*TS+TS/2, y: ty2*TS+TS/2, alive: true, bob: 0, isBolt: true });
   }
   updateGems(dt);
-  // 볼트 수 = 아군 gem 합계
-  siegeBolts.ally = (player?player.gems:0)+bots.filter(b=>b.team==='ally').reduce((s,b)=>s+b.gems,0);
-  // 볼트 10개 모으면 로봇 발사
-  if (siegeBolts.ally>=10 && !siegeBot) {
-    player.gems=0; bots.filter(b=>b.team==='ally').forEach(b=>b.gems=0);
-    siegeBolts.ally=0; gems=[];
-    const sp=safeSpawn('left');
-    siegeBot=makeEntity(sp.x,sp.y,'frank','ally');
-    siegeBot.hp=siegeBot.maxHp=20000;
-    siegeBot.d=Object.assign({},siegeBot.d,{ico:'🤖',name:'시즈봇',spd:2.0,dmg:1200,range:150});
-    siegeBot._siege=true;
-    bots.push(siegeBot);
-    spawnParts(sp.x,sp.y,'#ffe100',20);
+
+  // 아군 볼트 10개 → 로봇 소환
+  siegeBolts.ally = (player ? player.gems : 0) + bots.filter(b => b.team==='ally').reduce((s,b) => s+b.gems, 0);
+  if (siegeBolts.ally >= 10 && !siegeBot) {
+    if (player) player.gems = 0;
+    bots.filter(b => b.team==='ally').forEach(b => b.gems = 0);
+    siegeBolts.ally = 0; gems = [];
+    siegeBot = spawnSiegeBot('ally');
   }
-  if (siegeTimer<=0) { endGame(false); return; }
-  // 적 IQ 다운 (적도 볼트 줍는 척하지만 간단히 구현)
+  if (siegeBot && !siegeBot.alive) siegeBot = null;
+
+  // 적 볼트 모으기 (AI 시뮬레이션: 18초마다 로봇 소환)
+  siegeEnemyBoltTimer += dt;
+  if (siegeEnemyBoltTimer >= 18 && !siegeEnemyBot) {
+    siegeEnemyBoltTimer = 0;
+    siegeEnemyBot = spawnSiegeBot('enemy');
+  }
+  if (siegeEnemyBot && !siegeEnemyBot.alive) siegeEnemyBot = null;
+
+  // 시즈봇 이동 — 적 IKE를 향해 직진
+  for (const b of bots.filter(b => b._siege)) {
+    const targetIke = b._siegeTeam === 'ally' ? SIEGE_ENEMY_IKE : SIEGE_ALLY_IKE;
+    const ikeHp = b._siegeTeam === 'ally' ? siegeIke.enemy : siegeIke.ally;
+    if (ikeHp <= 0) continue;
+    const dx = targetIke.x - b.x, dy = targetIke.y - b.y;
+    const dist = Math.hypot(dx, dy);
+    if (dist > 50) {
+      moveEntity(b, (dx/dist)*b.d.spd, (dy/dist)*b.d.spd);
+    }
+    // IKE에 인접하면 데미지
+    if (dist < 55) {
+      if (b._siegeTeam === 'ally') {
+        siegeIke.enemy -= b.d.dmg * dt;
+        spawnParts(targetIke.x, targetIke.y, '#ffe100', 1);
+      } else {
+        siegeIke.ally -= b.d.dmg * dt;
+        spawnParts(targetIke.x, targetIke.y, '#ff4444', 1);
+      }
+    }
+  }
+
+  // IKE 자동 사격 (시즈봇에게)
+  for (const side of ['ally', 'enemy']) {
+    siegeIkeShootTimer[side] -= dt;
+    if (siegeIke[side] <= 0) continue;
+    if (siegeIkeShootTimer[side] > 0) continue;
+    const ikePos = side === 'ally' ? SIEGE_ALLY_IKE : SIEGE_ENEMY_IKE;
+    // 범위 내 적 시즈봇 찾기
+    const enemySide = side === 'ally' ? 'enemy' : 'ally';
+    const targets2 = bots.filter(b => b._siege && b._siegeTeam === enemySide && b.alive);
+    if (targets2.length) {
+      const tgt = targets2[0];
+      const d2 = Math.hypot(tgt.x - ikePos.x, tgt.y - ikePos.y);
+      if (d2 < TS * 10) {
+        const a = Math.atan2(tgt.y - ikePos.y, tgt.x - ikePos.x);
+        const spd = 8;
+        const bul = makeBullet(ikePos.x, ikePos.y, Math.cos(a)*spd, Math.sin(a)*spd,
+          3000, side === 'ally' ? 'ally' : 'enemy', side === 'ally' ? '#ffe100' : '#ff4444', 'normal', 7);
+        bul.life = d2 / spd + 5;
+        bullets.push(bul);
+        siegeIkeShootTimer[side] = 1.2;
+      }
+    }
+  }
+
+  // 승패 조건
+  if (siegeIke.enemy <= 0) { endGame(true); return; }
+  if (siegeIke.ally <= 0)  { endGame(false); return; }
+  if (siegeTimer <= 0)     { endGame(false); return; }
+}
+
+function drawSiege() {
+  if (!siegeIke) return;
+  function drawIke(pos, hp, color, label) {
+    const sx = pos.x - cam.x, sy = pos.y - cam.y;
+    const ratio = Math.max(0, hp / SIEGE_IKE_MAX_HP);
+    // 기지 몸체
+    ctx.save();
+    ctx.fillStyle = color;
+    ctx.globalAlpha = 0.85;
+    ctx.beginPath(); ctx.arc(sx, sy, 28, 0, Math.PI*2); ctx.fill();
+    ctx.globalAlpha = 1;
+    ctx.strokeStyle = '#fff'; ctx.lineWidth = 3;
+    ctx.stroke();
+    // 아이콘
+    ctx.font = '26px serif'; ctx.textAlign = 'center'; ctx.textBaseline = 'middle';
+    ctx.fillStyle = '#fff'; ctx.fillText('🏰', sx, sy);
+    // HP 바
+    const bw = 70, bh = 8;
+    const bx = sx - bw/2, by = sy - 42;
+    ctx.fillStyle = 'rgba(0,0,0,0.6)'; ctx.fillRect(bx-1, by-1, bw+2, bh+2);
+    ctx.fillStyle = ratio > 0.5 ? '#4caf50' : ratio > 0.25 ? '#ff9800' : '#f44336';
+    ctx.fillRect(bx, by, bw*ratio, bh);
+    // 이름
+    ctx.fillStyle = '#fff'; ctx.font = 'bold 11px Arial';
+    ctx.fillText(label, sx, sy + 40);
+    ctx.restore();
+  }
+  drawIke(SIEGE_ALLY_IKE,  siegeIke.ally,  '#1565c0', '아군 IKE');
+  drawIke(SIEGE_ENEMY_IKE, siegeIke.enemy, '#b71c1c', '적 IKE');
 }
 
 // 녹아웃: 부활 없이 3전2선승제
@@ -4457,7 +4570,7 @@ canvas.addEventListener('contextmenu', e => e.preventDefault());
       const rawDx = touch.clientX - (r.left + r.width / 2);
       const rawDy = touch.clientY - (r.top  + r.height / 2);
       const dragLen = Math.hypot(rawDx, rawDy);
-      const wasTap = dragLen < 30; // 30px 미만이면 탭 (자동조준)
+      const wasTap = dragLen < 55; // 55px 미만이면 탭 (자동조준)
       joyR.active = false; joyR.dx = 0; joyR.dy = 0; resetKnob(mcRightKnob);
       if (state !== 'playing' || !player) continue;
       if (wasTap) {
@@ -4705,6 +4818,7 @@ function loop(ts) {
     drawGems();
     if (selMode==='heist') drawHeist();
     if (selMode==='brawlball') drawBrawlBall();
+    if (selMode==='siege') drawSiege();
     for (const b of bots) { if (b._isBoss) continue; drawEnt(b); }
     if (selMode === 'boss') { drawBossLobWarning(); drawBoss(); }
     for (const bl of bullets) drawBullet(bl);
@@ -4786,6 +4900,7 @@ function loop(ts) {
   drawHealTurret();
   if (selMode==='heist') drawHeist();
   if (selMode==='brawlball') drawBrawlBall();
+  if (selMode==='siege') drawSiege();
   for (const b of bots) { if (b._isBoss) continue; drawEnt(b); }
   if (selMode === 'boss') { drawBossLobWarning(); drawBoss(); }
   // 조준선
@@ -4824,7 +4939,7 @@ function startGame() {
   keys={};
   respawnTimer=0; isDead=false; dashState=null;
   damageBooster=null; sandyBuff=null; healTurret=null;
-  heistHp=null; siegeTimer=0; siegeBolts=null; siegeBot=null; brawlBall=null;
+  heistHp=null; siegeTimer=0; siegeBolts=null; siegeBot=null; siegeEnemyBot=null; siegeIke=null; siegeIkeShootTimer={ally:2,enemy:2}; siegeEnemyBolts=0; siegeEnemyBoltTimer=0; brawlBall=null;
   koRound=0; koWins={ally:0,enemy:0};
   bossEnt=null; bossPhase=1; bossWaveClearing=false; bossAttackTimer=1.5; bossShockwaveTimer=8; bossMinionTimer=20; bossLobTimer=6; bossLobWarning=null;
   bossWave = selMode === 'boss' ? (parseInt(localStorage.getItem('brawl_boss_wave')||'1')||1) : 1;
@@ -4915,7 +5030,7 @@ function startGame() {
     }
     if (selMode==='gemgrab') spawnGemCenter();
     if (selMode==='heist') { heistHp={ally:20000,enemy:20000}; }
-    if (selMode==='siege') { siegeTimer=120; siegeBolts={ally:0,enemy:0}; siegeBot=null; }
+    if (selMode==='siege') { siegeTimer=120; siegeBolts={ally:0,enemy:0}; siegeBot=null; siegeEnemyBot=null; siegeIke={ally:SIEGE_IKE_MAX_HP,enemy:SIEGE_IKE_MAX_HP}; siegeIkeShootTimer={ally:2,enemy:2}; siegeEnemyBoltTimer=0; }
     if (selMode==='brawlball') { brawlBall={x:MX*TS/2,y:MY*TS/2,vx:0,vy:0,holder:null}; }
     if (selMode==='boss') {
       spawnNextBoss();
