@@ -2719,7 +2719,11 @@ function updateSiege(dt) {
   // 승패 조건
   if (siegeIke.enemy <= 0) { endGame(true); return; }
   if (siegeIke.ally <= 0)  { endGame(false); return; }
-  if (siegeTimer <= 0)     { endGame(false); return; }
+  if (siegeTimer <= 0) {
+    // 시간 초과: 적 IKE를 더 많이 깎은 쪽 승리 (남은 HP가 낮을수록 피해 많이 입힌 것)
+    endGame(siegeIke.enemy <= siegeIke.ally);
+    return;
+  }
 }
 
 function drawSiege() {
