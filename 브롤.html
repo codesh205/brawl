@@ -2720,8 +2720,10 @@ function updateSiege(dt) {
   if (siegeIke.enemy <= 0) { endGame(true); return; }
   if (siegeIke.ally <= 0)  { endGame(false); return; }
   if (siegeTimer <= 0) {
-    // 시간 초과: 적 IKE를 더 많이 깎은 쪽 승리 (남은 HP가 낮을수록 피해 많이 입힌 것)
-    endGame(siegeIke.enemy <= siegeIke.ally);
+    const allyDmg  = SIEGE_IKE_MAX_HP - siegeIke.ally;
+    const enemyDmg = SIEGE_IKE_MAX_HP - siegeIke.enemy;
+    // 동률이면 승리, 아니면 더 많이 깎은 쪽 승리
+    endGame(enemyDmg >= allyDmg);
     return;
   }
 }
