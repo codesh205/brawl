@@ -2663,10 +2663,11 @@ function updateSiege(dt) {
   }
   if (siegeBot && !siegeBot.alive) siegeBot = null;
 
-  // 적 볼트 모으기 (AI 시뮬레이션: 18초마다 로봇 소환)
-  siegeEnemyBoltTimer += dt;
-  if (siegeEnemyBoltTimer >= 18 && !siegeEnemyBot) {
-    siegeEnemyBoltTimer = 0;
+  // 적 볼트: 적 봇들의 gem 합계로 계산
+  siegeBolts.enemy = bots.filter(b => b.team === 'enemy' && !b._siege).reduce((s, b) => s + (b.gems||0), 0);
+  if (siegeBolts.enemy >= 10 && !siegeEnemyBot) {
+    bots.filter(b => b.team === 'enemy').forEach(b => b.gems = 0);
+    siegeBolts.enemy = 0;
     siegeEnemyBot = spawnSiegeBot('enemy');
   }
   if (siegeEnemyBot && !siegeEnemyBot.alive) siegeEnemyBot = null;
