@@ -5096,19 +5096,10 @@ function loop(ts) {
     // 보스전: 보스가 죽으면 즉시 승리 (다음 판에 다음 웨이브)
     if (!bossWaveClearing && bossEnt && !bossEnt.alive) {
       bossWaveClearing = true;
-      const maxBotDmg = Math.max(0, ...Object.values(botBossDmgMap));
-      const playerIsTop = playerBossDmg >= maxBotDmg && playerBossDmg > 0;
-      if (playerIsTop) {
-        // 플레이어가 최고 데미지 → 웨이브 진행 + 보상
-        const nextWave = Math.min(bossWave + 1, BOSS_WAVES.length);
-        try { localStorage.setItem('brawl_boss_wave', nextWave); } catch(e) {}
-        try { localStorage.setItem('brawl_boss_reward_' + bossWave, '1'); } catch(e) {}
-        endGame(true);
-      } else {
-        // 최고 데미지 아님 → 패배 (웨이브/보상 없음)
-        bossFailMsg = '최고 딜러가 되어야 웨이브 클리어!';
-        endGame(false);
-      }
+      const nextWave = Math.min(bossWave + 1, BOSS_WAVES.length);
+      try { localStorage.setItem('brawl_boss_wave', nextWave); } catch(e) {}
+      try { localStorage.setItem('brawl_boss_reward_' + bossWave, '1'); } catch(e) {}
+      endGame(true);
     }
   } else if (selMode==='gemgrab' || selMode==='heist' || selMode==='brawlball' || selMode==='siege' || selMode==='knockout') {
     // 위 모드들은 각자의 종료 조건(보석/금고/골/시간/전멸)으로 끝남 — 여기선 추가 체크 없음
