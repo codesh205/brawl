@@ -3021,16 +3021,15 @@ function bossSpecialAttack() {
       spawnParts(bossEnt.x, bossEnt.y, '#e65100', 25);
       break;
     }
-    case 4: { // 번개 황제: 번개 연쇄 — 가장 가까운 적에 즉시 데미지 후 연쇄
-      let chain = targets.slice().sort((a,b2) => Math.hypot(a.x-bossEnt.x,a.y-bossEnt.y) - Math.hypot(b2.x-bossEnt.x,b2.y-bossEnt.y));
-      chain.slice(0, 3).forEach((t, idx) => {
+    case 4: { // 번개 황제: 번개 연쇄 — 경고 시 고정된 위치로 발사
+      const pts = (bossSpecialWarning && bossSpecialWarning.lockedTargets) ||
+        targets.slice().sort((a,b2) => Math.hypot(a.x-bossEnt.x,a.y-bossEnt.y) - Math.hypot(b2.x-bossEnt.x,b2.y-bossEnt.y)).slice(0,3).map(t=>({x:t.x,y:t.y}));
+      pts.forEach((pt, idx) => {
         setTimeout(() => {
-          if (!t.alive) return;
-          damage(t, baseDmg*1.2, bossEnt, true);
-          checkKill(t, 'enemy');
-          spawnParts(t.x, t.y, '#ffe57f', 15);
-          for (let i=0;i<6;i++){const a=(Math.PI*2/6)*i;const b=makeBullet(t.x,t.y,Math.cos(a)*8,Math.sin(a)*8,baseDmg*0.4,'enemy','#ffe57f','normal',6);b.life=20;bullets.push(b);}
-        }, idx*180);
+          if (!bossEnt || !bossEnt.alive) return;
+          spawnParts(pt.x, pt.y, '#ffe57f', 15);
+          for (let i=0;i<6;i++){const a=(Math.PI*2/6)*i;const b=makeBullet(pt.x,pt.y,Math.cos(a)*8,Math.sin(a)*8,baseDmg*0.8,'enemy','#ffe57f','normal',6);b.life=30;bullets.push(b);}
+        }, idx*250);
       });
       spawnParts(bossEnt.x, bossEnt.y, '#1a237e', 20);
       break;
@@ -3313,7 +3312,13 @@ function updateBoss(dt) {
   bossShockwaveTimer -= dt;
   if (bossShockwaveTimer <= 0 && !bossLobWarning && !bossSpecialWarning) {
     bossShockwaveTimer = bossPhase >= 3 ? 7 : 10;
-    bossSpecialWarning = { timer: 1.5 }; // 1.5초 예고 후 발동
+    // 웨이브4(번개황제) 특수: 경고 시 타겟 위치 고정
+    let lockedTargets = null;
+    if (bossWave === 4) {
+      const ts4 = bossGetTargets().sort((a,b2) => Math.hypot(a.x-bossEnt.x,a.y-bossEnt.y) - Math.hypot(b2.x-bossEnt.x,b2.y-bossEnt.y)).slice(0,3);
+      lockedTargets = ts4.map(t => ({ x: t.x, y: t.y }));
+    }
+    bossSpecialWarning = { timer: 1.5, lockedTargets }; // 1.5초 예고 후 발동
   }
 
   // 벽 너머 로브 공격 (충격파 직후엔 발동 안 함)
@@ -3402,6 +3407,30 @@ function drawBossSpecialWarning() {
   ctx.textAlign = 'center'; ctx.textBaseline = 'middle';
   ctx.fillText('⚠', sx, sy - 50);
   ctx.restore();
+
+  // 번개황제: 낙뢰 착탄 위치 경고 원
+  if (bossSpecialWarning.lockedTargets) {
+    const pulse2 = 0.5 + Math.sin(Date.now() * 0.025) * 0.5;
+    for (const pt of bossSpecialWarning.lockedTargets) {
+      const tx = pt.x - cam.x, ty = pt.y - cam.y;
+      ctx.save();
+      ctx.globalAlpha = 0.25 + pulse2 * 0.45;
+      ctx.strokeStyle = '#ffe57f';
+      ctx.lineWidth = 3 + ratio * 2;
+      ctx.beginPath();
+      ctx.arc(tx, ty, 28 + ratio * 20, 0, Math.PI * 2);
+      ctx.stroke();
+      ctx.globalAlpha = 0.08 + pulse2 * 0.12;
+      ctx.fillStyle = '#ffe57f';
+      ctx.fill();
+      ctx.globalAlpha = 0.9;
+      ctx.fillStyle = '#fff700';
+      ctx.font = 'bold 16px sans-serif';
+      ctx.textAlign = 'center'; ctx.textBaseline = 'middle';
+      ctx.fillText('⚡', tx, ty);
+      ctx.restore();
+    }
+  }
 }
 
 function drawBoss() {
