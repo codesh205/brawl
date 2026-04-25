@@ -562,6 +562,9 @@ let bossLobWarning = null;       // 로브 경고 표시 { x, y, timer }
 let bossSpecialWarning = null;   // 충격파 예고 { timer }
 let bossAttackWarning = 0;       // 기본 공격 예고 카운트다운 (초)
 let bossLockedAngle = null;      // 경고 시 고정된 조준 각도
+let playerBossDmg = 0;           // 플레이어가 보스에게 입힌 총 데미지
+let botBossDmgMap = {};          // 봇별 보스 데미지 누적 { botId: dmg }
+let bossFailMsg = '';            // 보스 패배 사유 메시지
 
 const BOSS_WAVES = [
   { name:'다크 킹',      ico:'👹', color:'#8b0000', hp:55000,    spd:1.6, dmg:800,   fireRate:2.0  },
@@ -1102,6 +1105,15 @@ function damage(ent, dmg, attacker=null, fromSuper=false) {
   ent.flash = 8;
   ent.regenTimer = 0;
   if (attacker && actualDmg > 0) attacker.totalDamage += actualDmg;
+  // 보스 데미지 추적
+  if (ent === bossEnt && actualDmg > 0) {
+    if (attacker === player) {
+      playerBossDmg += actualDmg;
+    } else if (attacker && attacker !== player) {
+      const bid = attacker._uid || (attacker._uid = Math.random());
+      botBossDmgMap[bid] = (botBossDmgMap[bid] || 0) + actualDmg;
+    }
+  }
   // 플레이어가 피격 시 소리
   if (ent === player) SFX.hit();
   // 공격자가 플레이어면 공격 시에도 슈퍼 충전 (슈퍼 공격 제외)
@@ -3212,6 +3224,7 @@ function bossSpawnMinion() {
 function spawnNextBoss() {
   const w = BOSS_WAVES[bossWave - 1];
   const bsp = { x: (MX-3)*TS, y: MY*TS/2 };
+  playerBossDmg = 0; botBossDmgMap = {};
   // 기존 보스/부하 제거
   bots = bots.filter(b => !b._isBoss && !b._bossMinion);
   bossEnt = makeEntity(bsp.x, bsp.y, 'frank', 'enemy');
@@ -3695,7 +3708,12 @@ let dashState = null; // { vx, vy, timer, dmg }
 
 function autoAimToNearest() {
   if (!player) return;
-  const enemies = getTargets('player');
+  // 실제 적 봇 (보스 경고 관련 가짜 오브젝트 제외)
+  let enemies = getTargets('player').filter(t => !t._isWarning && !t._isBossWarning);
+  // 하이스트: 적 금고도 타겟에 추가
+  if (selMode === 'heist' && heistHp && heistHp.enemy > 0) {
+    enemies = [...enemies, { x: HEIST_ENEMY_VAULT.x, y: HEIST_ENEMY_VAULT.y, _isVault: true }];
+  }
   if (enemies.length === 0) return;
   const hasLOS = en => {
     for (let i = 1; i <= 12; i++) {
@@ -5078,12 +5096,19 @@ function loop(ts) {
     // 보스전: 보스가 죽으면 즉시 승리 (다음 판에 다음 웨이브)
     if (!bossWaveClearing && bossEnt && !bossEnt.alive) {
       bossWaveClearing = true;
-      // 웨이브 진행 저장 (최대 마지막 웨이브까지)
-      const nextWave = Math.min(bossWave + 1, BOSS_WAVES.length);
-      try { localStorage.setItem('brawl_boss_wave', nextWave); } catch(e) {}
-      // 웨이브 클리어 시 보상 캐릭터 해금
-      try { localStorage.setItem('brawl_boss_reward_' + bossWave, '1'); } catch(e) {}
-      endGame(true);
+      const maxBotDmg = Math.max(0, ...Object.values(botBossDmgMap));
+      const playerIsTop = playerBossDmg >= maxBotDmg && playerBossDmg > 0;
+      if (playerIsTop) {
+        // 플레이어가 최고 데미지 → 웨이브 진행 + 보상
+        const nextWave = Math.min(bossWave + 1, BOSS_WAVES.length);
+        try { localStorage.setItem('brawl_boss_wave', nextWave); } catch(e) {}
+        try { localStorage.setItem('brawl_boss_reward_' + bossWave, '1'); } catch(e) {}
+        endGame(true);
+      } else {
+        // 최고 데미지 아님 → 패배 (웨이브/보상 없음)
+        bossFailMsg = '최고 딜러가 되어야 웨이브 클리어!';
+        endGame(false);
+      }
     }
   } else if (selMode==='gemgrab' || selMode==='heist' || selMode==='brawlball' || selMode==='siege' || selMode==='knockout') {
     // 위 모드들은 각자의 종료 조건(보석/금고/골/시간/전멸)으로 끝남 — 여기선 추가 체크 없음
@@ -5145,7 +5170,7 @@ function startGame() {
   damageBooster=null; sandyBuff=null; healTurret=null;
   heistHp=null; siegeTimer=0; siegeBolts=null; siegeBot=null; siegeEnemyBot=null; siegeIke=null; siegeIkeShootTimer={ally:2,enemy:2}; siegeEnemyBolts=0; siegeEnemyBoltTimer=0; brawlBall=null;
   koRound=0; koWins={ally:0,enemy:0};
-  bossEnt=null; bossPhase=1; bossWaveClearing=false; bossAttackTimer=1.5; bossShockwaveTimer=8; bossMinionTimer=20; bossLobTimer=6; bossLobWarning=null; bossSpecialWarning=null; bossAttackWarning=0; bossLockedAngle=null;
+  bossEnt=null; bossPhase=1; bossWaveClearing=false; bossAttackTimer=1.5; bossShockwaveTimer=8; bossMinionTimer=20; bossLobTimer=6; bossLobWarning=null; bossSpecialWarning=null; bossAttackWarning=0; bossLockedAngle=null; playerBossDmg=0; botBossDmgMap={};
   bossWave = selMode === 'boss' ? (parseInt(localStorage.getItem('brawl_boss_wave')||'1')||1) : 1;
   bossWave = Math.max(1, Math.min(bossWave, BOSS_WAVES.length));
 
@@ -5279,7 +5304,8 @@ function endGame(win) {
 
   document.getElementById('goEmoji').textContent = goEmoji;
   document.getElementById('goText').textContent  = goText;
-  document.getElementById('goSub').textContent   = `점수: ${score}  처치: ${kills}`;
+  document.getElementById('goSub').textContent   = bossFailMsg || `점수: ${score}  처치: ${kills}`;
+  bossFailMsg = '';
   document.getElementById('goTrophy').textContent =
     `🏆 ${gain >= 0 ? '+' : ''}${gain} 트로피  (총 ${trophyData.total})`;
 
