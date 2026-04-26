@@ -313,7 +313,7 @@ const DEFS = {
   feitan:  { name:'팸',          ico:'☀️', color:'#ff6d00', hp:7000,  spd:2.4, dmg:380,  range:300, reload:1.4,  atk:'bullet',                               desc:'6발 시간차 연사', superDesc:'💊 치유 포탑 (HP 회복)',        regen:300,  regenDelay:2.5 }, // 🏆760
   crow:    { name:'크로우',      ico:'🐦', color:'#1a237e', hp:3200, spd:3.8, dmg:230, range:350, reload:1.0, atk:'triple',                          desc:'3방향 단검',   superDesc:'🦅 초고속 도약',                 regen:150, regenDelay:3.0 }, // 🏆800
   rico:    { name:'리코',        ico:'🎱', color:'#0097a7', hp:3600, spd:3.2, dmg:340, range:500, reload:1.3, atk:'bounce',                          desc:'반사 탄환',    superDesc:'🎱 슈퍼 반사 (5발 연속)',        regen:110, regenDelay:3.0 }, // 🏆850
-  jessie:  { name:'제시',        ico:'⚡', color:'#f9a825', hp:4400, spd:3.0, dmg:420, range:380, reload:1.7, atk:'bounce',                          desc:'전기 반사',    superDesc:'🤖 스크루볼트 (터렛 소환)',      regen:150, regenDelay:3.0 }, // 🏆950
+  jessie:  { name:'제시',        ico:'⚡', color:'#f9a825', hp:4400, spd:3.0, dmg:1600, range:380, reload:1.7, atk:'bullet',                         desc:'강력한 전기탄', superDesc:'🤖 스크루볼트 (터렛 소환)',      regen:150, regenDelay:3.0 }, // 🏆950
   gon:     { name:'곤',          ico:'🌿', color:'#4caf50', hp:5200, spd:3.2, dmg:580, range:90,  reload:0.85,atk:'melee',                           desc:'넨 근접 격투',  superDesc:'👊 재잰켄 바위 (광역 강타+벽 파괴)', regen:400, regenDelay:2.0 }, // 🏆1000
   dynamike:{ name:'다이나마이크', ico:'💣', color:'#ff6f00', hp:3200, spd:2.8, dmg:280, range:320, reload:1.8, atk:'lob',                            desc:'폭탄 투척',    superDesc:'💥 빅 붐 (초대형 폭탄)',         regen:90,  regenDelay:3.5 }, // 🏆1100
   '8bit':  { name:'8비트',       ico:'🕹', color:'#e53935', hp:6400, spd:2.2, dmg:480, range:500, reload:1.6, atk:'arrow',                          desc:'레이저 총',    superDesc:'⬆ 데미지 부스터 (팀 강화)',      regen:200, regenDelay:3.0 }, // 🏆1300
@@ -1064,7 +1064,7 @@ function shootBullets(ent, tx, ty, isSuper=false) {
           isSuper ? d.dmg*1.5 : d.dmg, owner, d.color, 'bounce', 5);
         b.life = d.range/spd;
         b.bounces = isSuper ? 5 : 3;
-        if (ent.defKey === 'rico' || ent.defKey === 'jessie') b.ricoShot = true;
+        if (ent.defKey === 'rico') b.ricoShot = true;
         out.push(b);
       }
     }
@@ -2424,7 +2424,7 @@ function updateBot(bot, dt) {
       const capturedTarget = bot.d.atk === 'bounce'
         ? calcBounceAimTarget(bot.x, bot.y, _rawTarget.x, _rawTarget.y)
         : _rawTarget;
-      if (bot.d.atk === 'arrow' || bot.defKey === 'colt' || bot.defKey === 'rico' || bot.defKey === 'jessie') {
+      if (bot.d.atk === 'arrow' || bot.defKey === 'colt' || bot.defKey === 'rico') {
         // 보·콜트·리코·제시: 5발 시간차 연사
         const shotCount = 5;
         const delay     = bot.d.atk === 'arrow' ? 120 : 100;
@@ -4700,7 +4700,7 @@ function tryShoot(isSuper) {
         }
         playerAmmo--;
         return;
-      } else if (player.d.atk === 'arrow' || player.defKey === 'colt' || player.defKey === 'rico' || player.defKey === 'jessie' || player.defKey === 'lightning') {
+      } else if (player.d.atk === 'arrow' || player.defKey === 'colt' || player.defKey === 'rico' || player.defKey === 'lightning') {
         // 보·콜트·리코·제시·번개황제: 5발 시간차 연사
         const capX = mouseWorld.x, capY = mouseWorld.y;
         for (let i = 0; i < 5; i++) {
