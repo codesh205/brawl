@@ -110,8 +110,8 @@ canvas { display:block; cursor:crosshair; }
   <div class="row" id="modeRow"></div>
   <div class="section-label">🦸 브롤러</div>
   <div class="row" id="brawlerRow"></div>
+  <div id="trialIndicator" style="font-size:12px;color:#aaa;margin:2px 0 6px;text-align:center;">💡 우클릭으로 잠긴 브롤러 체험 가능 (트로피 변동 없음)</div>
   <button class="btn" onclick="startGame()">🎮 게임 시작!</button>
-  <button class="btn gray" id="trialBtn" style="font-size:13px;padding:8px 22px;margin-top:8px;" onclick="toggleTrialMode()">🔓 체험 모드: OFF</button>
   <button class="btn red" style="font-size:13px;padding:8px 22px;margin-top:8px;" onclick="resetAllData()">🗑️ 처음부터 (초기화)</button>
   <button class="btn gray" style="font-size:13px;padding:8px 22px;margin-top:4px;" onclick="resetBossWave()">👹 보스 웨이브 초기화 (1웨이브부터)</button>
 </div>
@@ -502,14 +502,17 @@ let selBrawler = 'shelly';
 let selMode    = 'solo';
 let isTrialMode = false;
 
-function toggleTrialMode() {
-  isTrialMode = !isTrialMode;
-  const btn = document.getElementById('trialBtn');
-  if (btn) {
-    btn.textContent = isTrialMode ? '🔓 체험 모드: ON' : '🔓 체험 모드: OFF';
-    btn.style.background = isTrialMode ? '#2e7d32' : '';
+function updateTrialIndicator() {
+  const el = document.getElementById('trialIndicator');
+  if (!el) return;
+  if (isTrialMode) {
+    const d = DEFS[selBrawler];
+    el.textContent = `🔓 체험 중: ${d ? d.name : selBrawler} — 트로피 변동 없음`;
+    el.style.color = '#4caf50';
+  } else {
+    el.textContent = '💡 우클릭으로 잠긴 브롤러 체험 가능 (트로피 변동 없음)';
+    el.style.color = '#aaa';
   }
-  returnMenu();
 }
 let state      = 'menu'; // menu | playing | over
 let lastAllyKeys = null; // 다시 플레이용 이전 팀원 저장
@@ -4534,12 +4537,17 @@ function activateSuper() {
     }
 
   } else if (key === 'bang') {
-    // ❗ 극한 연사: 5발 × 5배 강화 데미지
+    // ❗ 극한 연사: 5줄 × 5발 강화 데미지
     for (let i = 0; i < 5; i++) {
       const a = angle + (i - 2) * 0.22;
-      const b = makeBullet(player.x, player.y, Math.cos(a)*12, Math.sin(a)*12,
-        player.d.dmg * 5, 'player', '#ff1744', 'bounce', 7);
-      b.life = 100; b.bounces = 5; b.ricoShot = true; b.isSuper = true; bullets.push(b);
+      for (let j = 0; j < 5; j++) {
+        setTimeout(() => {
+          if (state !== 'playing') return;
+          const b = makeBullet(player.x, player.y, Math.cos(a)*12, Math.sin(a)*12,
+            player.d.dmg * 5, 'player', '#ff1744', 'bounce', 7);
+          b.life = 100; b.bounces = 5; b.ricoShot = true; b.isSuper = true; bullets.push(b);
+        }, j * 80);
+      }
     }
     spawnParts(player.x, player.y, '#ff1744', 25);
     spawnParts(player.x, player.y, '#ffffff', 10);
@@ -5413,21 +5421,30 @@ function returnMenu() {
   const br = document.getElementById('brawlerRow');
   br.innerHTML = '';
   Object.entries(DEFS).forEach(([k,d]) => {
-    const unlocked = isTrialMode || isUnlocked(k);
+    const unlocked = isUnlocked(k);
     const req = BRAWLER_TROPHY_REQ[k];
     const el = document.createElement('div');
     el.className = 'card' + (k===selBrawler?' sel':'') + (unlocked?'':' locked');
     if (unlocked) {
-      const trialTag = isTrialMode && !isUnlocked(k) ? '<span class="event-tag" style="background:#2e7d32;">🔓 체험</span>' : '';
-      el.innerHTML = `<span class="ico">${d.ico}</span><span class="nm">${d.name}</span><span>${d.desc}</span>${trialTag}<span class="my-trophy">🏆${trophyData.perBrawler&&trophyData.perBrawler[k]||0}</span>`;
+      el.innerHTML = `<span class="ico">${d.ico}</span><span class="nm">${d.name}</span><span>${d.desc}</span><span class="my-trophy">🏆${trophyData.perBrawler&&trophyData.perBrawler[k]||0}</span>`;
       el.onclick = () => {
+        isTrialMode = false;
         selBrawler = k;
         br.querySelectorAll('.card').forEach(c=>c.classList.remove('sel'));
         el.classList.add('sel');
+        updateTrialIndicator();
       };
     } else {
       el.innerHTML = `<span class="ico">🔒</span><span class="nm">${d.name}</span><span class="trophy-req">🏆${req} 필요</span><span class="my-trophy">현재: ${trophyData.total||0}</span>`;
     }
+    el.oncontextmenu = (e) => {
+      e.preventDefault();
+      isTrialMode = true;
+      selBrawler = k;
+      br.querySelectorAll('.card').forEach(c=>c.classList.remove('sel'));
+      el.classList.add('sel');
+      updateTrialIndicator();
+    };
     br.appendChild(el);
   });
   updateTrophyBar();
@@ -5501,7 +5518,7 @@ function buildMenu() {
   const br = document.getElementById('brawlerRow');
   const HXH_KEYS2 = ['gon','leorio','kurapika','killua','hisoka','mystery','bang','darkking','skullking','flamelord','lightning','finaldemon','icelord','poisonking','spacemonster','abyssgod','dragonlord','chaosgod','doomlord','eternaldark','divineking','creatorsfoe'];
   Object.entries(DEFS).forEach(([k,d]) => {
-    const unlocked = isTrialMode || isUnlocked(k);
+    const unlocked = isUnlocked(k);
     const req = BRAWLER_TROPHY_REQ[k];
     const isHxH2 = HXH_KEYS2.includes(k);
     const isMystery = k === 'mystery';
@@ -5510,7 +5527,6 @@ function buildMenu() {
       icelord:'🧊 보스6 보상', poisonking:'☠️ 보스7 보상', spacemonster:'👾 보스8 보상', abyssgod:'🌑 보스9 보상', dragonlord:'🐉 보스10 보상',
       chaosgod:'🌀 보스11 보상', doomlord:'💥 보스12 보상', eternaldark:'🌌 보스13 보상', divineking:'⚜️ 보스14 보상', creatorsfoe:'🔱 보스15 보상'
     };
-    const trialTag = (isTrialMode && !isUnlocked(k)) ? `<span class="event-tag" style="background:#2e7d32;">🔓 체험</span>` : '';
     const eventTag2 = isMystery
       ? `<span class="event-tag" style="background:linear-gradient(90deg,#b71c1c,#000);">🔥 나만의 브롤러</span>`
       : bossRewardMap[k]
@@ -5519,15 +5535,25 @@ function buildMenu() {
     const el = document.createElement('div');
     el.className = 'card' + (k===selBrawler?' sel':'') + (unlocked?'':' locked');
     if (unlocked) {
-      el.innerHTML = `<span class="ico">${d.ico}</span><span class="nm">${d.name}</span><span>${d.desc}</span>${trialTag}${eventTag2}<span class="my-trophy">🏆${trophyData.perBrawler&&trophyData.perBrawler[k]||0}</span>`;
+      el.innerHTML = `<span class="ico">${d.ico}</span><span class="nm">${d.name}</span><span>${d.desc}</span>${eventTag2}<span class="my-trophy">🏆${trophyData.perBrawler&&trophyData.perBrawler[k]||0}</span>`;
       el.onclick = () => {
+        isTrialMode = false;
         selBrawler = k;
         br.querySelectorAll('.card').forEach(c=>c.classList.remove('sel'));
         el.classList.add('sel');
+        updateTrialIndicator();
       };
     } else {
       el.innerHTML = `<span class="ico">🔒</span><span class="nm">${d.name}</span><span class="trophy-req">🏆${req} 필요</span>${eventTag2}<span class="my-trophy">현재: ${trophyData.total||0}</span>`;
     }
+    el.oncontextmenu = (e) => {
+      e.preventDefault();
+      isTrialMode = true;
+      selBrawler = k;
+      br.querySelectorAll('.card').forEach(c=>c.classList.remove('sel'));
+      el.classList.add('sel');
+      updateTrialIndicator();
+    };
     br.appendChild(el);
   });
   updateTrophyBar();
