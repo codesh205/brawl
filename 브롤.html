@@ -459,7 +459,7 @@ function isModeUnlocked(m) {
 
 // 게임 결과에 따라 트로피 증감
 function applyTrophyResult(win, soloRank=null) {
-  if (isTrialMode) return { gain: 0, newUnlocks: [] };
+  if (isTrialMode || selMode === 'training') return { gain: 0, newUnlocks: [] };
   let gain;
   if (selMode === 'solo' && soloRank !== null) {
     // 솔로 쇼다운 순위별 트로피
@@ -708,6 +708,14 @@ const MAP_LAYOUTS = {
           [7,6],[8,6],[7,7],[11,7],[12,7],[12,8],
           [9,5],[10,5],[9,9],[10,9]],
     bush:[[6,6],[6,7],[6,8],[13,6],[13,7],[13,8],[9,7],[10,7]]
+  },
+  training_default: {
+    wall:[[3,2],[4,2],[16,2],[17,2],
+          [2,6],[3,6],[17,6],[18,6],
+          [2,11],[3,11],[17,11],[18,11],
+          [9,4],[10,4],[11,4],
+          [9,9],[10,9],[11,9]],
+    bush:[]
   },
   solo_training: {
     wall:[[8,2],[9,2],[10,2],[11,2],
@@ -1577,7 +1585,10 @@ function updateHUD() {
 
   // 모드 정보
   let mi = '';
-  if (selMode==='solo') {
+  if (selMode==='training') {
+    const alive = bots.filter(b=>b._dummy && b.alive).length;
+    mi = `🎯 훈련장  로봇: ${alive}/${bots.filter(b=>b._dummy).length}`;
+  } else if (selMode==='solo') {
     const alive = bots.filter(b=>b.alive && !b._tempBot).length;
     mi = `💀 생존자: ${alive+1}명`;
   } else if (selMode==='gemgrab') {
@@ -2256,6 +2267,19 @@ function calcBounceAimTarget(bx, by, tx, ty) {
 // AI 업데이트
 // ────────────────────────────────────────────────────────────
 function updateBot(bot, dt) {
+  // 훈련장 더미: AI 없음, 리스폰만 처리
+  if (bot._dummy) {
+    if (!bot.alive) {
+      bot._respawnTimer = (bot._respawnTimer !== undefined ? bot._respawnTimer - dt : 3);
+      if (bot._respawnTimer <= 0) {
+        bot.hp = bot.maxHp; bot.alive = true;
+        bot.x = bot._dummyX; bot.y = bot._dummyY;
+        spawnParts(bot.x, bot.y, '#aaa', 12);
+        delete bot._respawnTimer;
+      }
+    }
+    return;
+  }
   // 팀전에서 죽은 봇 부활 처리 (솔로/녹아웃/바운티 제외)
   if (!bot.alive) {
     if (selMode !== 'solo' && selMode !== 'knockout' && selMode !== 'bounty' && !bot._bossMinion && !bot._isBoss) {
@@ -5157,7 +5181,10 @@ function loop(ts) {
   }
 
   // 승패 체크 (녹아웃은 updateKnockout에서 처리됨)
-  if (!player || !player.alive) { SFX.playerDeath(); endGame(false); return; }
+  if (!player || !player.alive) {
+    if (selMode === 'training') { player.hp = player.maxHp; player.alive = true; }
+    else { SFX.playerDeath(); endGame(false); return; }
+  }
   if (selMode==='solo') {
     // 솔로: 봇이 모두 죽으면 승리
     const aliveAll = bots.filter(b=>b.alive && !b._tempBot).length;
@@ -5290,7 +5317,18 @@ function startGame() {
     return pool[pool.length-1];
   }
 
-  if (selMode==='solo') {
+  if (selMode==='training') {
+    // 훈련장: 정지 더미 봇 9개
+    const DUMMY_SPOTS = [[5,3],[10,3],[15,3],[3,8],[10,8],[17,8],[5,12],[10,12],[15,12]];
+    for (const [tx,ty] of DUMMY_SPOTS) {
+      const dx = tx*TS + TS/2, dy = ty*TS + TS/2;
+      const d = makeEntity(dx, dy, 'shelly', 'enemy');
+      d.hp = d.maxHp = 8000;
+      d.d = { ...d.d, ico:'🤖', name:'로봇', color:'#888', spd:0, dmg:0, reload:999 };
+      d._dummy = true; d._dummyX = dx; d._dummyY = dy;
+      bots.push(d);
+    }
+  } else if (selMode==='solo') {
     // 솔로: 봇마다 고유 팀 번호 → 서로 + 플레이어 모두 적 (8bit·팸 봇 사용 불가)
     for (let i=0;i<9;i++) {
       const sp = safeSpawn('any');
@@ -5477,6 +5515,7 @@ const MODES = [
   { id:'siege',     ico:'🤖', name:'시즈',         desc:'로봇 러시', req:150 },
   { id:'knockout',  ico:'🥊', name:'녹아웃',       desc:'2선승',    req:200 },
   { id:'boss',      ico:'👹', name:'보스전',        desc:'협동 보스', req:50  },
+  { id:'training',  ico:'🎯', name:'훈련장',        desc:'사격 연습', req:0   },
 ];
 
 const MAP_META = {
@@ -5489,7 +5528,8 @@ const MAP_META = {
   solo_default:    { name:'기본 맵',  ico:'🏟️' },
   solo_arena:      { name:'아레나 맵',ico:'⚔️' },
   solo_labyrinth:  { name:'미궁 맵',  ico:'🗺️' },
-  solo_training:   { name:'훈련장',   ico:'🎯' },
+  solo_training:   { name:'연습 매치', ico:'⚔️' },
+  training_default:{ name:'훈련장',   ico:'🎯' },
   boss_arena:      { name:'보스 아레나', ico:'👹' },
 };
 
