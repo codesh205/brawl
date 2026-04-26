@@ -1021,14 +1021,31 @@ function shootBullets(ent, tx, ty, isSuper=false) {
     const cnt = isSuper ? 5 : (isBang || isSpaceMonster) ? 5 : 1;
     const spread = (isBang || isSpaceMonster) ? 0.18 : 0.1;
     const spd = 9;
-    for (let i = 0; i < cnt; i++) {
-      const a = angle + (i - (cnt-1)/2) * spread;
-      const b = makeBullet(ent.x, ent.y, Math.cos(a)*spd, Math.sin(a)*spd,
-        isSuper ? d.dmg*1.5 : d.dmg, owner, d.color, 'bounce', 5);
-      b.life = d.range/spd;
-      b.bounces = isSuper ? 5 : 3;
-      if (ent.defKey === 'rico' || ent.defKey === 'jessie') b.ricoShot = true;
-      out.push(b);
+    if (isBang && !isSuper) {
+      // ❗ 5줄로 5발씩: 5개 방향 × 5발 연속
+      for (let i = 0; i < 5; i++) {
+        const a = angle + (i - 2) * spread;
+        for (let j = 0; j < 5; j++) {
+          setTimeout(() => {
+            if (state !== 'playing') return;
+            const b = makeBullet(ent.x, ent.y, Math.cos(a)*spd, Math.sin(a)*spd,
+              d.dmg, owner, d.color, 'bounce', 5);
+            b.life = d.range/spd;
+            b.bounces = 3;
+            bullets.push(b);
+          }, j * 80);
+        }
+      }
+    } else {
+      for (let i = 0; i < cnt; i++) {
+        const a = angle + (i - (cnt-1)/2) * spread;
+        const b = makeBullet(ent.x, ent.y, Math.cos(a)*spd, Math.sin(a)*spd,
+          isSuper ? d.dmg*1.5 : d.dmg, owner, d.color, 'bounce', 5);
+        b.life = d.range/spd;
+        b.bounces = isSuper ? 5 : 3;
+        if (ent.defKey === 'rico' || ent.defKey === 'jessie') b.ricoShot = true;
+        out.push(b);
+      }
     }
   }
 
