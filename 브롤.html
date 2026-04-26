@@ -110,7 +110,7 @@ canvas { display:block; cursor:crosshair; }
   <div class="row" id="modeRow"></div>
   <div class="section-label">🦸 브롤러</div>
   <div class="row" id="brawlerRow"></div>
-  <div id="trialIndicator" style="font-size:12px;color:#aaa;margin:2px 0 6px;text-align:center;">💡 우클릭으로 잠긴 브롤러 체험 가능 (트로피 변동 없음)</div>
+  <div id="trialIndicator" style="font-size:12px;color:#aaa;margin:2px 0 6px;text-align:center;">💡 우클릭 / 길게 눌러서 체험 가능 (트로피 변동 없음)</div>
   <button class="btn" onclick="startGame()">🎮 게임 시작!</button>
   <button class="btn red" style="font-size:13px;padding:8px 22px;margin-top:8px;" onclick="resetAllData()">🗑️ 처음부터 (초기화)</button>
   <button class="btn gray" style="font-size:13px;padding:8px 22px;margin-top:4px;" onclick="resetBossWave()">👹 보스 웨이브 초기화 (1웨이브부터)</button>
@@ -501,6 +501,24 @@ function updateTrophyBar() {
 let selBrawler = 'shelly';
 let selMode    = 'solo';
 let isTrialMode = false;
+function addTrialEvents(el, k, br) {
+  el.oncontextmenu = (e) => {
+    e.preventDefault();
+    isTrialMode = true; selBrawler = k;
+    br.querySelectorAll('.card').forEach(c=>c.classList.remove('sel'));
+    el.classList.add('sel'); updateTrialIndicator();
+  };
+  let _lpt = null;
+  el.addEventListener('touchstart', () => {
+    _lpt = setTimeout(() => {
+      isTrialMode = true; selBrawler = k;
+      br.querySelectorAll('.card').forEach(c=>c.classList.remove('sel'));
+      el.classList.add('sel'); updateTrialIndicator();
+    }, 500);
+  }, { passive: true });
+  el.addEventListener('touchend',  () => clearTimeout(_lpt));
+  el.addEventListener('touchmove', () => clearTimeout(_lpt));
+}
 
 function updateTrialIndicator() {
   const el = document.getElementById('trialIndicator');
@@ -5437,14 +5455,7 @@ function returnMenu() {
     } else {
       el.innerHTML = `<span class="ico">🔒</span><span class="nm">${d.name}</span><span class="trophy-req">🏆${req} 필요</span><span class="my-trophy">현재: ${trophyData.total||0}</span>`;
     }
-    el.oncontextmenu = (e) => {
-      e.preventDefault();
-      isTrialMode = true;
-      selBrawler = k;
-      br.querySelectorAll('.card').forEach(c=>c.classList.remove('sel'));
-      el.classList.add('sel');
-      updateTrialIndicator();
-    };
+    addTrialEvents(el, k, br);
     br.appendChild(el);
   });
   updateTrophyBar();
@@ -5546,14 +5557,7 @@ function buildMenu() {
     } else {
       el.innerHTML = `<span class="ico">🔒</span><span class="nm">${d.name}</span><span class="trophy-req">🏆${req} 필요</span>${eventTag2}<span class="my-trophy">현재: ${trophyData.total||0}</span>`;
     }
-    el.oncontextmenu = (e) => {
-      e.preventDefault();
-      isTrialMode = true;
-      selBrawler = k;
-      br.querySelectorAll('.card').forEach(c=>c.classList.remove('sel'));
-      el.classList.add('sel');
-      updateTrialIndicator();
-    };
+    addTrialEvents(el, k, br);
     br.appendChild(el);
   });
   updateTrophyBar();
