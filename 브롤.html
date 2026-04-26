@@ -5164,8 +5164,10 @@ function loop(ts) {
     if (!bossWaveClearing && bossEnt && !bossEnt.alive) {
       bossWaveClearing = true;
       const nextWave = Math.min(bossWave + 1, BOSS_WAVES.length);
-      try { localStorage.setItem('brawl_boss_wave', nextWave); } catch(e) {}
-      try { localStorage.setItem('brawl_boss_reward_' + bossWave, '1'); } catch(e) {}
+      if (!isTrialMode) {
+        try { localStorage.setItem('brawl_boss_wave', nextWave); } catch(e) {}
+        try { localStorage.setItem('brawl_boss_reward_' + bossWave, '1'); } catch(e) {}
+      }
       endGame(true);
     }
   } else if (selMode==='gemgrab' || selMode==='heist' || selMode==='brawlball' || selMode==='siege' || selMode==='knockout') {
