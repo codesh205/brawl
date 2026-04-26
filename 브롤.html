@@ -3128,11 +3128,11 @@ function bossSpecialAttack() {
       for (let i=0;i<cnt3;i++){
         const a=(Math.PI*2/cnt3)*i;
         const b=makeBullet(bossEnt.x,bossEnt.y,Math.cos(a)*5,Math.sin(a)*5,baseDmg*0.7,'enemy','#aee8ff','normal',10);
-        b.life=150; b.isIce=true; bullets.push(b);
+        b.life=150; b.isIce=true; b.dmg=baseDmg*0.2; bullets.push(b);
       }
-      // 범위 내 타겟 슬로우
+      // 범위 내 타겟 슬로우 (중첩 가능)
       for (const t of targets) {
-        if (Math.hypot(t.x-bossEnt.x,t.y-bossEnt.y)<TS*6) { t.slowTimer=(t.slowTimer||0)+7; spawnParts(t.x,t.y,'#aee8ff',8); }
+        if (Math.hypot(t.x-bossEnt.x,t.y-bossEnt.y)<TS*6) { t.slowTimer=(t.slowTimer||0)+20; spawnParts(t.x,t.y,'#aee8ff',8); }
       }
       spawnParts(bossEnt.x, bossEnt.y, '#0077b6', 30);
       break;
