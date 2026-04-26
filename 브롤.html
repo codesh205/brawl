@@ -524,11 +524,10 @@ function updateTrialIndicator() {
   const el = document.getElementById('trialIndicator');
   if (!el) return;
   if (isTrialMode) {
-    const d = DEFS[selBrawler];
-    el.textContent = `🔓 체험 중: ${d ? d.name : selBrawler} — 트로피 변동 없음`;
+    el.textContent = '🔓 체험 모드 — 트로피 변동 없음';
     el.style.color = '#4caf50';
   } else {
-    el.textContent = '💡 우클릭으로 잠긴 브롤러 체험 가능 (트로피 변동 없음)';
+    el.textContent = '💡 우클릭 / 길게 눌러서 체험 가능 (트로피 변동 없음)';
     el.style.color = '#aaa';
   }
 }
@@ -5497,14 +5496,37 @@ function buildMapRow() {
   const keys = Object.keys(MAP_LAYOUTS).filter(k=>k.startsWith(selMode+'_'));
   keys.forEach(k => {
     const meta = MAP_META[k] || { name:k, ico:'🗺️' };
+    const mapKey = k.replace(selMode+'_', '');
     const el = document.createElement('div');
-    el.className = 'mcard' + (selMap===k.replace(selMode+'_','')?' sel':'');
+    el.className = 'mcard' + (selMap===mapKey?' sel':'');
     el.innerHTML = `<span class="ico">${meta.ico}</span><span class="nm">${meta.name}</span>`;
     el.onclick = () => {
-      selMap = k.replace(selMode+'_','');
+      isTrialMode = false;
+      selMap = mapKey;
       mapr.querySelectorAll('.mcard').forEach(c=>c.classList.remove('sel'));
       el.classList.add('sel');
+      updateTrialIndicator();
     };
+    el.oncontextmenu = (e) => {
+      e.preventDefault();
+      isTrialMode = true;
+      selMap = mapKey;
+      mapr.querySelectorAll('.mcard').forEach(c=>c.classList.remove('sel'));
+      el.classList.add('sel');
+      updateTrialIndicator();
+    };
+    let _lpt = null;
+    el.addEventListener('touchstart', () => {
+      _lpt = setTimeout(() => {
+        isTrialMode = true;
+        selMap = mapKey;
+        mapr.querySelectorAll('.mcard').forEach(c=>c.classList.remove('sel'));
+        el.classList.add('sel');
+        updateTrialIndicator();
+      }, 500);
+    }, { passive: true });
+    el.addEventListener('touchend',  () => clearTimeout(_lpt));
+    el.addEventListener('touchmove', () => clearTimeout(_lpt));
     mapr.appendChild(el);
   });
 }
