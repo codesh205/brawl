@@ -524,11 +524,15 @@ function updateTrialIndicator() {
   const el = document.getElementById('trialIndicator');
   if (!el) return;
   if (isTrialMode) {
-    el.textContent = '🔓 체험 모드 — 트로피 변동 없음';
+    el.textContent = '🔓 체험 모드 — 트로피 변동 없음  (클릭하면 해제)';
     el.style.color = '#4caf50';
+    el.style.cursor = 'pointer';
+    el.onclick = () => { isTrialMode = false; updateTrialIndicator(); };
   } else {
     el.textContent = '💡 우클릭 / 길게 눌러서 체험 가능 (트로피 변동 없음)';
     el.style.color = '#aaa';
+    el.style.cursor = 'default';
+    el.onclick = null;
   }
 }
 let state      = 'menu'; // menu | playing | over
@@ -5447,7 +5451,6 @@ function returnMenu() {
     if (unlocked) {
       el.innerHTML = `<span class="ico">${d.ico}</span><span class="nm">${d.name}</span><span>${d.desc}</span><span class="my-trophy">🏆${trophyData.perBrawler&&trophyData.perBrawler[k]||0}</span>`;
       el.onclick = () => {
-        isTrialMode = false;
         selBrawler = k;
         br.querySelectorAll('.card').forEach(c=>c.classList.remove('sel'));
         el.classList.add('sel');
@@ -5501,11 +5504,9 @@ function buildMapRow() {
     el.className = 'mcard' + (selMap===mapKey?' sel':'');
     el.innerHTML = `<span class="ico">${meta.ico}</span><span class="nm">${meta.name}</span>`;
     el.onclick = () => {
-      isTrialMode = false;
       selMap = mapKey;
       mapr.querySelectorAll('.mcard').forEach(c=>c.classList.remove('sel'));
       el.classList.add('sel');
-      updateTrialIndicator();
     };
     el.oncontextmenu = (e) => {
       e.preventDefault();
@@ -5572,7 +5573,6 @@ function buildMenu() {
     if (unlocked) {
       el.innerHTML = `<span class="ico">${d.ico}</span><span class="nm">${d.name}</span><span>${d.desc}</span>${eventTag2}<span class="my-trophy">🏆${trophyData.perBrawler&&trophyData.perBrawler[k]||0}</span>`;
       el.onclick = () => {
-        isTrialMode = false;
         selBrawler = k;
         br.querySelectorAll('.card').forEach(c=>c.classList.remove('sel'));
         el.classList.add('sel');
